@@ -8,6 +8,7 @@ import { Progress } from './screens/Progress'
 import { Sessions } from './screens/Sessions'
 import { Techniques } from './screens/Techniques'
 import { emptyData, uid, useAppData } from './store'
+import { useSync } from './useSync'
 import type { FocusGoal, GiFilter, LogForm, Session, Tab } from './types'
 
 declare global {
@@ -29,6 +30,7 @@ const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5,
 
 export default function App() {
   const [data, update] = useAppData()
+  const { status: syncStatus, requestPush } = useSync(data, update)
   const todayIso = useTodayIso()
   const [tab, setTab] = useState<Tab>('dash')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -71,6 +73,7 @@ export default function App() {
       id: uid(),
       date: toIso(now),
       createdAt: now.getTime(),
+      updatedAt: now.getTime(),
       title: autoTitle(now),
       gi: form.gi,
       rolls: form.rolls,
@@ -82,16 +85,24 @@ export default function App() {
     update((d) => ({ ...d, sessions: [...d.sessions, session] }))
     setForm((f) => ({ ...f, rolls: 0, subsFor: 0, subsAgainst: 0, tags: [] }))
     setSaved(true)
+    requestPush()
   }
 
-  const addTag = (name: string) =>
+  const addTag = (name: string) => {
+    const stamp = Date.now()
     update((d) =>
       d.tagList.some((t) => t.toLowerCase() === name.toLowerCase())
         ? d
-        : { ...d, tagList: [...d.tagList, name] },
+        : { ...d, tagList: [...d.tagList, name], stateUpdatedAt: stamp },
     )
+    requestPush()
+  }
 
-  const setFocus = (focus: FocusGoal) => update((d) => ({ ...d, focus }))
+  const setFocus = (focus: FocusGoal) => {
+    const stamp = Date.now()
+    update((d) => ({ ...d, focus, stateUpdatedAt: stamp }))
+    requestPush()
+  }
 
   return (
     <div className="app">
@@ -101,6 +112,7 @@ export default function App() {
           <Home
             data={data}
             todayIso={todayIso}
+            syncStatus={syncStatus}
             onSeeAll={() => pickTab('history')}
             onOpenSession={openSession}
             onChangeFocus={setFocus}

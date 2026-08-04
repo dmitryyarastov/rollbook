@@ -130,6 +130,15 @@
   line-height: 1;
   color: var(--color-neutral-500);
 }
+.home-head-right {
+  text-align: right;
+}
+.sync-note {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-neutral-600);
+}
 
 /* ── Home: hero card ── */
 

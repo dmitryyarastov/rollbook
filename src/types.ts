@@ -5,6 +5,8 @@ export interface Session {
   /** Local calendar date, `yyyy-mm-dd`. Never derived via toISOString(). */
   date: string
   createdAt: number
+  /** Epoch ms of the last local edit; drives last-write-wins sync merges. */
+  updatedAt: number
   title: string
   gi: boolean
   rolls: number
@@ -30,6 +32,8 @@ export interface AppData {
   tagList: string[]
   focus: FocusGoal
   settings: Settings
+  /** Epoch ms of the last local focus/tagList/settings edit; 0 = never touched. */
+  stateUpdatedAt: number
 }
 
 export type Tab = 'dash' | 'history' | 'log' | 'tech' | 'progress'

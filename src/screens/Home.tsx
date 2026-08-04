@@ -2,17 +2,27 @@ import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
 import { fmtToday } from '../dates'
 import { focusProgress, formatHours, sortByDateDesc, streak, subs30d, weekSummary } from '../stats'
+import type { SyncStatus } from '../sync'
 import type { AppData, FocusGoal } from '../types'
+
+const SYNC_LABELS: Record<SyncStatus, string | null> = {
+  disabled: null,
+  syncing: 'syncing…',
+  synced: 'synced',
+  offline: 'offline — will sync',
+  error: 'sync error',
+}
 
 interface HomeProps {
   data: AppData
   todayIso: string
+  syncStatus: SyncStatus
   onSeeAll: () => void
   onOpenSession: (id: string) => void
   onChangeFocus: (focus: FocusGoal) => void
 }
 
-export function Home({ data, todayIso, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
+export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
   const goal = data.settings.weeklyGoal
   const week = weekSummary(data.sessions, todayIso)
   const st = streak(data.sessions, goal, todayIso)
@@ -24,7 +34,10 @@ export function Home({ data, todayIso, onSeeAll, onOpenSession, onChangeFocus }:
     <div className="screen">
       <header className="home-head">
         <h1 className="home-title">Rollbook</h1>
-        <div className="home-date">{fmtToday(todayIso)}</div>
+        <div className="home-head-right">
+          <div className="home-date">{fmtToday(todayIso)}</div>
+          {SYNC_LABELS[syncStatus] && <div className="sync-note">{SYNC_LABELS[syncStatus]}</div>}
+        </div>
       </header>
 
       <section className="card card--lg hero">

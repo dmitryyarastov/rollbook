@@ -155,6 +155,7 @@ export function demoData(todayIso: string): AppData {
       id: `demo-${i}`,
       date,
       createdAt: parseIso(date).getTime() + 18 * 3600_000 + i,
+      updatedAt: parseIso(date).getTime() + 18 * 3600_000 + i,
       title: spec.title,
       gi: spec.gi,
       rolls: spec.rolls,

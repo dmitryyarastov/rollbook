@@ -24,6 +24,7 @@ export function emptyData(): AppData {
     tagList: [...DEFAULT_TAGS],
     focus: { title: '', tag: '' },
     settings: { weeklyGoal: 2, showMilestones: true },
+    stateUpdatedAt: 0,
   }
 }
 
@@ -34,10 +35,15 @@ function load(): AppData {
     if (!raw) return base
     const parsed = JSON.parse(raw) as Partial<AppData>
     return {
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : base.sessions,
+      // Pre-sync data lacks updatedAt: default it to createdAt.
+      sessions: (Array.isArray(parsed.sessions) ? parsed.sessions : base.sessions).map((s) => ({
+        ...s,
+        updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
+      })),
       tagList: Array.isArray(parsed.tagList) && parsed.tagList.length > 0 ? parsed.tagList : base.tagList,
       focus: { ...base.focus, ...parsed.focus },
       settings: { ...base.settings, ...parsed.settings },
+      stateUpdatedAt: typeof parsed.stateUpdatedAt === 'number' ? parsed.stateUpdatedAt : 0,
     }
   } catch {
     return base

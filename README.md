@@ -34,6 +34,25 @@ Serve `dist/` from any static host (HTTPS), open it on the phone, and use
 visit, so it opens and works fully offline afterwards. Icons/manifest cover
 Android (incl. maskable) and iOS (`apple-touch-icon`).
 
+## Remote sync (Supabase, optional)
+
+With `src/config.ts` filled in (project URL + publishable key — public-by-design,
+RLS protects the data), the app syncs automatically: pull + merge on launch,
+debounced push on every save/edit, plus on regaining connectivity and on
+foregrounding the PWA. localStorage stays the offline source of truth; sync
+never blocks the UI, and a paused/unreachable project just shows a quiet
+"sync error" on Home while everything keeps working locally.
+
+- Schema: [supabase-schema.sql](supabase-schema.sql) (run once in the SQL editor).
+  Sessions land in a plain Postgres table — query it from the dashboard or
+  psql: `select tag, count(*) from sessions, unnest(tags) tag group by 1;`
+- Merges are last-write-wins by `updatedAt`; remote is never authoritative
+  for deletions, and the anon role cannot DELETE at all.
+- Demo data (`window.rollbook.seed()`) never syncs; `clear()` resets local
+  only — the next launch re-imports your real history from the database.
+- No login yet (single hardcoded user). The schema is shaped so adding real
+  auth later is a policy swap — see the notes at the bottom of the SQL file.
+
 ## How the numbers are computed (`src/stats.ts`)
 
 Everything on screen derives from stored sessions — pure functions, all

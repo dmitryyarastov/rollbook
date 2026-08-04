@@ -24,6 +24,7 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     id: `t${seq}`,
     date,
     createdAt: seq,
+    updatedAt: seq,
     title: 'Test',
     gi: true,
     rolls: 5,
