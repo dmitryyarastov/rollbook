@@ -4,7 +4,9 @@ import {
   focusProgress,
   formatHours,
   last30d,
+  orderTagsByUsage,
   quarterMilestone,
+  withSessionTags,
   sortByDateDesc,
   streak,
   streakMilestone,
@@ -179,6 +181,41 @@ describe('milestones', () => {
   it('year: no pace clause when off pace or empty', () => {
     expect(yearMilestone([], TODAY).sub).toBe('0 / 500')
     expect(yearMilestone([mk('2026-08-01', { rolls: 10 })], TODAY).sub).toBe('10 / 500')
+  })
+})
+
+describe('withSessionTags', () => {
+  it('appends session-borne tags missing from the master list', () => {
+    const sessions = [mk('2026-08-01', { tags: ['Half guard', 'Over-Under Pass'] })]
+    expect(withSessionTags(['Half guard', 'Kimura'], sessions)).toEqual(['Half guard', 'Kimura', 'Over-Under Pass'])
+  })
+
+  it('returns the same reference when nothing is missing', () => {
+    const list = ['Half guard']
+    expect(withSessionTags(list, [mk('2026-08-01', { tags: ['Half guard'] })])).toBe(list)
+  })
+})
+
+describe('orderTagsByUsage', () => {
+  const masterList = ['Half guard', 'Kimura', 'DLR X', 'Escapes']
+
+  it('floats recently used tags to the front, master order for the rest', () => {
+    const sessions = [
+      mk('2026-08-01', { tags: ['DLR X', 'Escapes'] }),
+      mk('2026-07-30', { tags: ['DLR X'] }),
+    ]
+    expect(orderTagsByUsage(masterList, sessions, TODAY)).toEqual(['DLR X', 'Escapes', 'Half guard', 'Kimura'])
+  })
+
+  it('keeps master order when nothing was used or counts tie', () => {
+    expect(orderTagsByUsage(masterList, [], TODAY)).toEqual(masterList)
+    const tied = [mk('2026-08-01', { tags: ['Kimura', 'Half guard'] })]
+    expect(orderTagsByUsage(masterList, tied, TODAY)).toEqual(['Half guard', 'Kimura', 'DLR X', 'Escapes'])
+  })
+
+  it('ignores usage outside the 30-day window', () => {
+    const old = [mk('2026-06-01', { tags: ['Escapes'] })]
+    expect(orderTagsByUsage(masterList, old, TODAY)).toEqual(masterList)
   })
 })
 

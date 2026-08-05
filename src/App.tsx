@@ -7,6 +7,7 @@ import { Log } from './screens/Log'
 import { Progress } from './screens/Progress'
 import { Sessions } from './screens/Sessions'
 import { Techniques } from './screens/Techniques'
+import { orderTagsByUsage, withSessionTags } from './stats'
 import { emptyData, uid, useAppData } from './store'
 import { useSync } from './useSync'
 import type { FocusGoal, GiFilter, LogForm, Session, Tab } from './types'
@@ -131,7 +132,7 @@ export default function App() {
           <Log
             form={form}
             onPatch={patchForm}
-            tagList={data.tagList}
+            tagList={orderTagsByUsage(withSessionTags(data.tagList, data.sessions), data.sessions, todayIso)}
             onAddTag={addTag}
             onSave={saveSession}
             saved={saved}

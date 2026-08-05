@@ -1,5 +1,5 @@
 import { FocusCard } from '../components/FocusCard'
-import { focusProgress, tagCounts30d } from '../stats'
+import { focusProgress, tagCounts30d, withSessionTags } from '../stats'
 import type { AppData, FocusGoal } from '../types'
 
 interface TechniquesProps {
@@ -13,7 +13,7 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
   const top = counts.filter((c) => c.n > 0).slice(0, 6)
   const max = top[0]?.n ?? 1
   const byName = new Map(counts.map((c) => [c.name, c.n]))
-  const cloud = data.tagList
+  const cloud = withSessionTags(data.tagList, data.sessions)
     .map((t) => ({ label: t, n: byName.get(t) ?? 0 }))
     .sort((a, b) => b.n - a.n)
 

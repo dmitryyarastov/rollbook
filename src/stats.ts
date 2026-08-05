@@ -116,6 +116,37 @@ export function tagCounts30d(sessions: Session[], todayIso: string): { name: str
     .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
 }
 
+/**
+ * Master tag list plus any tag referenced by a session but missing from it —
+ * a tag you've logged with must always stay toggleable, even if list edits
+ * on another device raced and dropped it (blob-level state sync).
+ */
+export function withSessionTags(tagList: string[], sessions: Session[]): string[] {
+  const known = new Set(tagList)
+  const out = [...tagList]
+  for (const s of sessions) {
+    for (const t of s.tags) {
+      if (!known.has(t)) {
+        known.add(t)
+        out.push(t)
+      }
+    }
+  }
+  return out.length === tagList.length ? tagList : out
+}
+
+/**
+ * Tag list reordered for fast logging: most-used in the last 30 days first,
+ * unused tags keeping their master-list order. Stable for ties.
+ */
+export function orderTagsByUsage(tagList: string[], sessions: Session[], todayIso: string): string[] {
+  const counts = new Map(tagCounts30d(sessions, todayIso).map((c) => [c.name, c.n]))
+  return tagList
+    .map((tag, i) => ({ tag, i, n: counts.get(tag) ?? 0 }))
+    .sort((a, b) => b.n - a.n || a.i - b.i)
+    .map((x) => x.tag)
+}
+
 export interface FocusProgress {
   pct: number
   tagged: number
