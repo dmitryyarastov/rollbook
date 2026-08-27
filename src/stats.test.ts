@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { Session } from './types'
+import type { Competition, Session } from './types'
 import {
   focusProgress,
   formatHours,
+  historyFeed,
   last30d,
-  orderTagsByUsage,
   quarterMilestone,
   withSessionTags,
   sortByDateDesc,
@@ -34,6 +34,23 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     subsAgainst: 0,
     roundMin: 5,
     tags: [],
+    ...extra,
+  }
+}
+
+function mkComp(date: string, extra: Partial<Competition> = {}): Competition {
+  seq++
+  return {
+    id: `c${seq}`,
+    date,
+    createdAt: seq,
+    updatedAt: seq,
+    title: 'Competition',
+    gi: true,
+    cardio: 3,
+    workedWell: '',
+    didntWork: '',
+    matches: [],
     ...extra,
   }
 }
@@ -196,26 +213,34 @@ describe('withSessionTags', () => {
   })
 })
 
-describe('orderTagsByUsage', () => {
-  const masterList = ['Half guard', 'Kimura', 'DLR X', 'Escapes']
-
-  it('floats recently used tags to the front, master order for the rest', () => {
-    const sessions = [
-      mk('2026-08-01', { tags: ['DLR X', 'Escapes'] }),
-      mk('2026-07-30', { tags: ['DLR X'] }),
-    ]
-    expect(orderTagsByUsage(masterList, sessions, TODAY)).toEqual(['DLR X', 'Escapes', 'Half guard', 'Kimura'])
+describe('historyFeed', () => {
+  it('interleaves sessions and competitions by date desc', () => {
+    const s1 = mk('2026-08-01')
+    const c = mkComp('2026-07-30')
+    const s2 = mk('2026-07-28')
+    expect(historyFeed([s2, s1], [c])).toEqual([
+      { kind: 'session', item: s1 },
+      { kind: 'comp', item: c },
+      { kind: 'session', item: s2 },
+    ])
   })
 
-  it('keeps master order when nothing was used or counts tie', () => {
-    expect(orderTagsByUsage(masterList, [], TODAY)).toEqual(masterList)
-    const tied = [mk('2026-08-01', { tags: ['Kimura', 'Half guard'] })]
-    expect(orderTagsByUsage(masterList, tied, TODAY)).toEqual(['Half guard', 'Kimura', 'DLR X', 'Escapes'])
+  it('breaks same-date ties by createdAt desc across kinds', () => {
+    const s = mk('2026-08-01') // createdAt = seq, earlier
+    const c = mkComp('2026-08-01') // later createdAt
+    expect(historyFeed([s], [c]).map((e) => e.kind)).toEqual(['comp', 'session'])
   })
 
-  it('ignores usage outside the 30-day window', () => {
-    const old = [mk('2026-06-01', { tags: ['Escapes'] })]
-    expect(orderTagsByUsage(masterList, old, TODAY)).toEqual(masterList)
+  it('puts the competition first on an exact date+createdAt tie', () => {
+    const s = mk('2026-08-01', { createdAt: 100 })
+    const c = mkComp('2026-08-01', { createdAt: 100 })
+    expect(historyFeed([s], [c]).map((e) => e.kind)).toEqual(['comp', 'session'])
+  })
+
+  it('handles empty inputs', () => {
+    expect(historyFeed([], [])).toEqual([])
+    const s = mk('2026-08-01')
+    expect(historyFeed([s], [])).toEqual([{ kind: 'session', item: s }])
   })
 })
 

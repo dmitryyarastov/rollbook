@@ -514,6 +514,79 @@
   color: var(--color-accent-300);
 }
 
+/* ── Competition rows ── */
+
+.srow-badge--comp {
+  background: var(--color-accent-900);
+  border: 1px solid var(--color-accent-800);
+  color: var(--color-accent-300);
+}
+.crow-matches {
+  display: block;
+}
+.crow-match {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.crow-match + .crow-match {
+  margin-top: 7px;
+}
+.crow-oc {
+  display: block;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  min-width: 38px;
+  text-align: left;
+}
+.crow-oc--win {
+  color: var(--color-accent-300);
+}
+.crow-oc--loss {
+  color: var(--color-neutral-500);
+}
+.crow-oc--draw {
+  color: var(--color-neutral-400);
+}
+.crow-score {
+  display: block;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+}
+.crow-fin {
+  display: block;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--color-neutral-500);
+}
+.crow-cardio {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 12px;
+}
+.crow-cardio-n {
+  display: block;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+}
+.crow-note {
+  display: block;
+  margin-top: 12px;
+  text-align: left;
+}
+.crow-note-text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-neutral-300);
+  margin-top: 5px;
+}
+
 /* ── Chips (filters, durations, technique toggles) ── */
 
 .chips {
@@ -759,6 +832,100 @@
   color: var(--color-accent-300);
 }
 
+/* ── Log: competition mode ── */
+
+.log-mode {
+  margin-top: 14px;
+}
+.log-mode + .log-type {
+  margin-top: 8px;
+}
+.comp-event {
+  margin-top: 12px;
+}
+.match-empty {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-neutral-500);
+  padding: 12px 0 2px;
+}
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.match {
+  background: var(--color-bg);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.match-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.match-outcomes {
+  margin-top: 10px;
+}
+.match-points {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.match-half {
+  flex: 1;
+  text-align: center;
+}
+.match-half-label {
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.match-half-label--me {
+  color: var(--color-accent-300);
+}
+.match-half-label--them {
+  color: var(--color-neutral-500);
+}
+.match-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.match-count {
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1;
+  min-width: 30px;
+}
+.match .input--sm {
+  margin-top: 12px;
+}
+.input--sm {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.match-add {
+  margin-top: 10px;
+}
+.comp-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+.input--area {
+  line-height: 1.45;
+  resize: none;
+  min-height: 64px;
+  font-family: inherit;
+}
+
 /* ── Techniques screen ── */
 
 .trows {
@@ -821,6 +988,24 @@
 }
 .tagstat-n {
   color: var(--color-neutral-600);
+}
+
+/* ── Techniques: curriculum groups ── */
+
+.cloud-group {
+  margin-top: 14px;
+}
+.label-row + .cloud-group {
+  margin-top: 0;
+}
+.cloud-group-label {
+  font-weight: 500;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+  margin-bottom: 8px;
 }
 
 /* ── Progress screen ── */

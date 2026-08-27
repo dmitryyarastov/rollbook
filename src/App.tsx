@@ -7,10 +7,11 @@ import { Log } from './screens/Log'
 import { Progress } from './screens/Progress'
 import { Sessions } from './screens/Sessions'
 import { Techniques } from './screens/Techniques'
-import { orderTagsByUsage, withSessionTags } from './stats'
+import { orderTagsByCurriculum } from './curriculum'
+import { withSessionTags } from './stats'
 import { emptyData, uid, useAppData } from './store'
 import { useSync } from './useSync'
-import type { FocusGoal, GiFilter, LogForm, Session, Tab } from './types'
+import type { CompForm, Competition, FocusGoal, GiFilter, LogForm, LogMode, Session, Tab } from './types'
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ function useTodayIso(): string {
 }
 
 const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5, gi: true, tags: [] }
+const EMPTY_COMP_FORM: CompForm = { name: '', gi: true, cardio: 0, workedWell: '', didntWork: '', matches: [] }
 
 export default function App() {
   const [data, update] = useAppData()
@@ -37,6 +39,8 @@ export default function App() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState<GiFilter>('All')
   const [form, setForm] = useState<LogForm>(EMPTY_FORM)
+  const [logMode, setLogMode] = useState<LogMode>('training')
+  const [compForm, setCompForm] = useState<CompForm>(EMPTY_COMP_FORM)
   const [saved, setSaved] = useState(false)
 
   // Demo/reset helpers for trying the app: window.rollbook.seed() / .clear()
@@ -68,6 +72,17 @@ export default function App() {
     setSaved(false)
   }
 
+  const patchComp = (patch: Partial<CompForm>) => {
+    setCompForm((f) => ({ ...f, ...patch }))
+    setSaved(false)
+  }
+
+  // Both forms keep their state across a mode switch; only the confirmation clears.
+  const pickMode = (m: LogMode) => {
+    setLogMode(m)
+    setSaved(false)
+  }
+
   const saveSession = () => {
     const now = new Date()
     const session: Session = {
@@ -85,6 +100,26 @@ export default function App() {
     }
     update((d) => ({ ...d, sessions: [...d.sessions, session] }))
     setForm((f) => ({ ...f, rolls: 0, subsFor: 0, subsAgainst: 0, tags: [] }))
+    setSaved(true)
+    requestPush()
+  }
+
+  const saveComp = () => {
+    const now = new Date()
+    const comp: Competition = {
+      id: uid(),
+      date: toIso(now),
+      createdAt: now.getTime(),
+      updatedAt: now.getTime(),
+      title: compForm.name.trim() || 'Competition',
+      gi: compForm.gi,
+      cardio: compForm.cardio,
+      workedWell: compForm.workedWell.trim(),
+      didntWork: compForm.didntWork.trim(),
+      matches: compForm.matches.map((m) => ({ ...m, submission: m.submission.trim() })),
+    }
+    update((d) => ({ ...d, competitions: [...d.competitions, comp] }))
+    setCompForm((f) => ({ ...EMPTY_COMP_FORM, gi: f.gi }))
     setSaved(true)
     requestPush()
   }
@@ -132,7 +167,12 @@ export default function App() {
           <Log
             form={form}
             onPatch={patchForm}
-            tagList={orderTagsByUsage(withSessionTags(data.tagList, data.sessions), data.sessions, todayIso)}
+            mode={logMode}
+            onMode={pickMode}
+            compForm={compForm}
+            onPatchComp={patchComp}
+            onSaveComp={saveComp}
+            tagList={orderTagsByCurriculum(withSessionTags(data.tagList, data.sessions))}
             onAddTag={addTag}
             onSave={saveSession}
             saved={saved}

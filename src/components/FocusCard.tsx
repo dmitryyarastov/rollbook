@@ -1,5 +1,6 @@
 import { Check, PencilSimple } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { orderTagsByCurriculum } from '../curriculum'
 import type { FocusProgress } from '../stats'
 import type { FocusGoal } from '../types'
 import { Chip } from './Chip'
@@ -78,7 +79,7 @@ export function FocusCard({ variant, focus, progress, tagList, onChange }: Focus
           <div>
             <span className="field-label">Linked tag — drives the progress bar</span>
             <div className="chip-wrap">
-              {tagList.map((t) => (
+              {orderTagsByCurriculum(tagList).map((t) => (
                 <Chip
                   key={t}
                   variant="tech"

@@ -10,7 +10,7 @@
  */
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
 import { emptyData } from './store'
-import type { AppData, FocusGoal, RoundMin, Session, Settings } from './types'
+import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, RoundMin, Session, Settings } from './types'
 
 export type SyncStatus = 'disabled' | 'syncing' | 'synced' | 'offline' | 'error'
 
@@ -23,11 +23,12 @@ export interface RemoteState {
 
 export interface RemotePull {
   sessions: Session[]
+  competitions: Competition[]
   state: RemoteState | null
 }
 
 /** Demo seed data stays a local plaything — never pushed, never pulled. */
-export const isPushable = (s: Session): boolean => !s.id.startsWith('demo-')
+export const isPushable = (s: { id: string }): boolean => !s.id.startsWith('demo-')
 
 // ── Row mapping ──────────────────────────────────────────────────────────────
 
@@ -95,6 +96,83 @@ export function fromRow(r: unknown): Session | null {
   }
 }
 
+interface CompetitionRow {
+  id: string
+  user_id: string
+  date: string
+  title: string
+  gi: boolean
+  cardio: number
+  worked_well: string
+  didnt_work: string
+  matches: CompMatch[] // serialized into the jsonb column
+  created_at: string
+  updated_at: string
+}
+
+export function toCompRow(c: Competition): CompetitionRow {
+  return {
+    id: c.id,
+    user_id: SYNC_USER_ID,
+    date: c.date, // verbatim yyyy-mm-dd — never routed through a JS Date
+    title: c.title,
+    gi: c.gi,
+    cardio: c.cardio,
+    worked_well: c.workedWell,
+    didnt_work: c.didntWork,
+    matches: c.matches,
+    created_at: new Date(c.createdAt).toISOString(),
+    updated_at: new Date(c.updatedAt).toISOString(),
+  }
+}
+
+const CARDIO_RATINGS: readonly number[] = [0, 1, 2, 3, 4, 5]
+const OUTCOMES: readonly string[] = ['win', 'loss', 'draw']
+/** The jsonb column has no per-field CHECKs — these client caps are the only bounds. */
+const MAX_MATCHES = 50
+const MAX_POINTS = 1000
+
+function sanitizeMatches(v: unknown): CompMatch[] {
+  if (!Array.isArray(v)) return []
+  const out: CompMatch[] = []
+  for (const m of v.slice(0, MAX_MATCHES)) {
+    if (typeof m !== 'object' || m === null) continue
+    const o = m as Record<string, unknown>
+    // Outcome is semantically essential — no sane default, drop the entry.
+    if (typeof o.outcome !== 'string' || !OUTCOMES.includes(o.outcome)) continue
+    out.push({
+      outcome: o.outcome as CompOutcome,
+      myPoints: Math.min(MAX_POINTS, count(o.myPoints)),
+      theirPoints: Math.min(MAX_POINTS, count(o.theirPoints)),
+      submission: typeof o.submission === 'string' ? o.submission.trim() : '',
+    })
+  }
+  return out
+}
+
+/** Sanitizing pull-side mapper for competitions — same trust model as fromRow. */
+export function fromCompRow(r: unknown): Competition | null {
+  if (typeof r !== 'object' || r === null) return null
+  const o = r as Record<string, unknown>
+  if (typeof o.id !== 'string' || o.id === '') return null
+  if (typeof o.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(o.date)) return null
+  const createdAt = typeof o.created_at === 'string' ? Date.parse(o.created_at) : NaN
+  const updatedAt = typeof o.updated_at === 'string' ? Date.parse(o.updated_at) : NaN
+  if (Number.isNaN(createdAt) || Number.isNaN(updatedAt)) return null
+  return {
+    id: o.id,
+    date: o.date,
+    createdAt,
+    updatedAt,
+    title: typeof o.title === 'string' ? o.title : 'Competition',
+    gi: o.gi === true,
+    cardio: (CARDIO_RATINGS.includes(Number(o.cardio)) ? Number(o.cardio) : 0) as CardioRating,
+    workedWell: typeof o.worked_well === 'string' ? o.worked_well : '',
+    didntWork: typeof o.didnt_work === 'string' ? o.didnt_work : '',
+    matches: sanitizeMatches(o.matches),
+  }
+}
+
 export function fromStateRow(r: unknown): RemoteState | null {
   if (typeof r !== 'object' || r === null) return null
   const o = r as Record<string, unknown>
@@ -124,14 +202,22 @@ export function fromStateRow(r: unknown): RemoteState | null {
 
 // ── Merge (last-write-wins) ──────────────────────────────────────────────────
 
+interface Mergeable {
+  id: string
+  date: string
+  createdAt: number
+  updatedAt: number
+}
+
 /**
- * Per id: strictly-newer remote wins, ties keep local. Remote-only sessions
- * are appended; local-only sessions are ALWAYS kept — remote is not
- * authoritative for deletions, so remote tampering can never erase history.
- * Returns the same array reference when nothing changed (React bailout).
+ * Per id: strictly-newer remote wins, ties keep local. Remote-only rows are
+ * appended; local-only rows are ALWAYS kept — remote is not authoritative
+ * for deletions, so remote tampering can never erase history. Returns the
+ * same array reference when nothing changed (React bailout). One generic so
+ * session and competition merge semantics can never drift.
  */
-export function mergeSessions(local: Session[], remote: Session[]): Session[] {
-  const remoteById = new Map<string, Session>()
+function mergeById<T extends Mergeable>(local: T[], remote: T[]): T[] {
+  const remoteById = new Map<string, T>()
   for (const r of remote) if (isPushable(r)) remoteById.set(r.id, r)
   let changed = false
   const out = local.map((l) => {
@@ -154,14 +240,20 @@ export function mergeSessions(local: Session[], remote: Session[]): Session[] {
   return changed ? out : local
 }
 
+export const mergeSessions = (local: Session[], remote: Session[]): Session[] => mergeById(local, remote)
+export const mergeCompetitions = (local: Competition[], remote: Competition[]): Competition[] =>
+  mergeById(local, remote)
+
 export function mergeAppData(d: AppData, remote: RemotePull): AppData {
   const sessions = mergeSessions(d.sessions, remote.sessions)
+  const competitions = mergeCompetitions(d.competitions, remote.competitions)
   const adopt = remote.state !== null && remote.state.updatedAt > d.stateUpdatedAt
-  if (sessions === d.sessions && !adopt) return d
-  if (!adopt || remote.state === null) return { ...d, sessions }
+  if (sessions === d.sessions && competitions === d.competitions && !adopt) return d
+  if (!adopt || remote.state === null) return { ...d, sessions, competitions }
   return {
     ...d,
     sessions,
+    competitions,
     focus: remote.state.focus,
     tagList: remote.state.tagList,
     settings: remote.state.settings,
@@ -183,15 +275,24 @@ export async function pullAll(f: typeof fetch = fetch): Promise<RemotePull> {
     f(`${SUPABASE_URL}/rest/v1/${path}`, { headers: baseHeaders(), signal: AbortSignal.timeout(TIMEOUT_MS) })
   // PostgREST caps responses at 1000 rows; updated_at.desc means a
   // hypothetical overflow drops the oldest sessions, not the newest.
-  const [sesRes, stateRes] = await Promise.all([
+  const [sesRes, compRes, stateRes] = await Promise.all([
     get(`sessions?select=*&user_id=eq.${SYNC_USER_ID}&order=updated_at.desc`),
+    get(`competitions?select=*&user_id=eq.${SYNC_USER_ID}&order=updated_at.desc`),
     get(`app_state?select=*&user_id=eq.${SYNC_USER_ID}`),
   ])
   if (!sesRes.ok || !stateRes.ok) throw new Error(`sync pull ${sesRes.status}/${stateRes.status}`)
+  // The competitions table may postdate this build's schema (the SQL addendum
+  // not yet run): PostgREST answers 404 for a missing table. Treat exactly
+  // that as "no remote comps" so sessions keep syncing; anything else is real.
+  if (!compRes.ok && compRes.status !== 404) throw new Error(`sync pull ${compRes.status}`)
   const sesJson = (await sesRes.json()) as unknown
+  const compJson = compRes.ok ? ((await compRes.json()) as unknown) : []
   const stateJson = (await stateRes.json()) as unknown
   return {
     sessions: (Array.isArray(sesJson) ? sesJson : []).map(fromRow).filter((s): s is Session => s !== null),
+    competitions: (Array.isArray(compJson) ? compJson : [])
+      .map(fromCompRow)
+      .filter((c): c is Competition => c !== null),
     state: Array.isArray(stateJson) && stateJson.length > 0 ? fromStateRow(stateJson[0]) : null,
   }
 }
@@ -209,6 +310,7 @@ export async function pushAll(d: AppData, f: typeof fetch = fetch): Promise<void
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
   const rows = d.sessions.filter(isPushable).map(toRow)
+  const compRows = d.competitions.filter(isPushable).map(toCompRow)
   const reqs: Promise<Response>[] = []
   if (rows.length > 0) reqs.push(post('sessions?on_conflict=id', rows))
   if (d.stateUpdatedAt > 0) {
@@ -223,7 +325,13 @@ export async function pushAll(d: AppData, f: typeof fetch = fetch): Promise<void
       ]),
     )
   }
-  for (const res of await Promise.all(reqs)) {
+  // Tracked outside `reqs`: a 404 (table not created yet) is tolerated for
+  // competitions only — they stay local and upload on the first push after
+  // the user runs the SQL addendum. Sessions/app_state stay strict.
+  const compReq = compRows.length > 0 ? post('competitions?on_conflict=id', compRows) : null
+  const [strict, compRes] = await Promise.all([Promise.all(reqs), compReq])
+  for (const res of strict) {
     if (!res.ok) throw new Error(`sync push ${res.status}`)
   }
+  if (compRes !== null && !compRes.ok && compRes.status !== 404) throw new Error(`sync push ${compRes.status}`)
 }

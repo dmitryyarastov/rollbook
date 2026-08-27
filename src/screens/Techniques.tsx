@@ -1,4 +1,5 @@
 import { FocusCard } from '../components/FocusCard'
+import { groupTagsByCurriculum } from '../curriculum'
 import { focusProgress, tagCounts30d, withSessionTags } from '../stats'
 import type { AppData, FocusGoal } from '../types'
 
@@ -13,9 +14,7 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
   const top = counts.filter((c) => c.n > 0).slice(0, 6)
   const max = top[0]?.n ?? 1
   const byName = new Map(counts.map((c) => [c.name, c.n]))
-  const cloud = withSessionTags(data.tagList, data.sessions)
-    .map((t) => ({ label: t, n: byName.get(t) ?? 0 }))
-    .sort((a, b) => b.n - a.n)
+  const sections = groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions))
 
   return (
     <div className="screen">
@@ -51,13 +50,18 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
       )}
 
       <div className="section-label label-row">All tags</div>
-      <div className="tag-cloud">
-        {cloud.map((t) => (
-          <div key={t.label} className="tagstat">
-            {t.label} <span className="tagstat-n">{t.n}</span>
+      {sections.map((sec) => (
+        <div key={sec.group} className="cloud-group">
+          <div className="cloud-group-label">{sec.label}</div>
+          <div className="tag-cloud">
+            {sec.tags.map((t) => (
+              <div key={t} className="tagstat">
+                {t} <span className="tagstat-n">{byName.get(t) ?? 0}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }

@@ -3,7 +3,7 @@
  * through these pure functions. All take `todayIso` explicitly so tests are
  * timezone- and clock-proof. Weeks run Monday–Sunday.
  */
-import type { Session } from './types'
+import type { Competition, Session } from './types'
 import { addDays, dayOfYear, fmtShort, mondayOf, monthFull, parseIso } from './dates'
 
 export const sessionMinutes = (s: Session) => s.rolls * s.roundMin
@@ -16,6 +16,26 @@ export function formatHours(h: number): string {
 
 export function sortByDateDesc(sessions: Session[]): Session[] {
   return [...sessions].sort((a, b) => (a.date === b.date ? b.createdAt - a.createdAt : a.date < b.date ? 1 : -1))
+}
+
+export type HistoryEntry = { kind: 'session'; item: Session } | { kind: 'comp'; item: Competition }
+
+/**
+ * Sessions and competitions interleaved for history rendering, newest first:
+ * date desc, then createdAt desc; an exact tie puts the competition first
+ * (the headline event of the day — and determinism for tests).
+ */
+export function historyFeed(sessions: Session[], competitions: Competition[]): HistoryEntry[] {
+  const entries: HistoryEntry[] = [
+    ...sessions.map((item): HistoryEntry => ({ kind: 'session', item })),
+    ...competitions.map((item): HistoryEntry => ({ kind: 'comp', item })),
+  ]
+  return entries.sort(
+    (a, b) =>
+      (a.item.date === b.item.date ? 0 : a.item.date < b.item.date ? 1 : -1) ||
+      b.item.createdAt - a.item.createdAt ||
+      (a.kind === b.kind ? 0 : a.kind === 'comp' ? -1 : 1),
+  )
 }
 
 function sortByDateAsc(sessions: Session[]): Session[] {
@@ -133,18 +153,6 @@ export function withSessionTags(tagList: string[], sessions: Session[]): string[
     }
   }
   return out.length === tagList.length ? tagList : out
-}
-
-/**
- * Tag list reordered for fast logging: most-used in the last 30 days first,
- * unused tags keeping their master-list order. Stable for ties.
- */
-export function orderTagsByUsage(tagList: string[], sessions: Session[], todayIso: string): string[] {
-  const counts = new Map(tagCounts30d(sessions, todayIso).map((c) => [c.name, c.n]))
-  return tagList
-    .map((tag, i) => ({ tag, i, n: counts.get(tag) ?? 0 }))
-    .sort((a, b) => b.n - a.n || a.i - b.i)
-    .map((x) => x.tag)
 }
 
 export interface FocusProgress {

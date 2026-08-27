@@ -23,6 +23,7 @@ export const DEFAULT_TAGS = [
 export function emptyData(): AppData {
   return {
     sessions: [],
+    competitions: [],
     tagList: [...DEFAULT_TAGS],
     focus: { title: '', tag: '' },
     settings: { weeklyGoal: 2, showMilestones: true },
@@ -30,7 +31,8 @@ export function emptyData(): AppData {
   }
 }
 
-function load(): AppData {
+/** Exported for tests; the app itself only reaches it through useAppData. */
+export function load(): AppData {
   const base = emptyData()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -42,6 +44,8 @@ function load(): AppData {
         ...s,
         updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
       })),
+      // Blobs from before the competitions feature simply gain the empty array.
+      competitions: Array.isArray(parsed.competitions) ? parsed.competitions : base.competitions,
       tagList: Array.isArray(parsed.tagList) && parsed.tagList.length > 0 ? parsed.tagList : base.tagList,
       focus: { ...base.focus, ...parsed.focus },
       settings: { ...base.settings, ...parsed.settings },

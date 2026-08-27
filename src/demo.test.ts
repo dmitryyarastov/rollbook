@@ -66,4 +66,15 @@ describe('demo seed (through the real stats functions)', () => {
     expect(rolls).toBeGreaterThan(300)
     expect(rolls).toBeLessThan(430)
   })
+
+  it('seeds two demo competitions that can never sync', () => {
+    const { competitions } = demoData(TODAY)
+    expect(competitions).toHaveLength(2)
+    for (const c of competitions) {
+      expect(c.id.startsWith('demo-')).toBe(true)
+      expect(c.date <= TODAY && c.date >= '2026-01-01').toBe(true)
+    }
+    expect(competitions[0].matches).toHaveLength(3)
+    expect(competitions[1].matches).toHaveLength(2)
+  })
 })

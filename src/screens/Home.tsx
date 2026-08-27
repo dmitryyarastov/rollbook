@@ -1,7 +1,8 @@
+import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
 import { fmtToday } from '../dates'
-import { focusProgress, formatHours, sortByDateDesc, streak, subs30d, weekSummary } from '../stats'
+import { focusProgress, formatHours, historyFeed, streak, subs30d, weekSummary } from '../stats'
 import type { SyncStatus } from '../sync'
 import type { AppData, FocusGoal } from '../types'
 
@@ -27,7 +28,7 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
   const week = weekSummary(data.sessions, todayIso)
   const st = streak(data.sessions, goal, todayIso)
   const subs = subs30d(data.sessions, todayIso)
-  const recent = sortByDateDesc(data.sessions).slice(0, 3)
+  const recent = historyFeed(data.sessions, data.competitions).slice(0, 3)
   const maxBar = Math.max(...week.bars.map((b) => b.rolls), 1)
 
   return (
@@ -113,9 +114,13 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
       </div>
       {recent.length > 0 ? (
         <div className="slist">
-          {recent.map((s) => (
-            <SessionRow key={s.id} session={s} onClick={() => onOpenSession(s.id)} />
-          ))}
+          {recent.map((e) =>
+            e.kind === 'session' ? (
+              <SessionRow key={e.item.id} session={e.item} onClick={() => onOpenSession(e.item.id)} />
+            ) : (
+              <CompRow key={e.item.id} comp={e.item} onClick={() => onOpenSession(e.item.id)} />
+            ),
+          )}
         </div>
       ) : (
         <div className="empty">No sessions yet — hit the + tab after class.</div>

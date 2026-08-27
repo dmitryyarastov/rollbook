@@ -1,6 +1,7 @@
 import { Chip } from '../components/Chip'
+import { CompRow } from '../components/CompRow'
 import { SessionRow } from '../components/SessionRow'
-import { sortByDateDesc } from '../stats'
+import { historyFeed } from '../stats'
 import type { AppData, GiFilter } from '../types'
 
 const FILTERS: GiFilter[] = ['All', 'Gi', 'No-Gi']
@@ -14,8 +15,8 @@ interface SessionsProps {
 }
 
 export function Sessions({ data, filter, onFilter, expandedId, onToggle }: SessionsProps) {
-  const list = sortByDateDesc(data.sessions).filter(
-    (s) => filter === 'All' || (filter === 'Gi') === s.gi,
+  const list = historyFeed(data.sessions, data.competitions).filter(
+    (e) => filter === 'All' || (filter === 'Gi') === e.item.gi,
   )
 
   return (
@@ -30,15 +31,29 @@ export function Sessions({ data, filter, onFilter, expandedId, onToggle }: Sessi
       </div>
       {list.length > 0 ? (
         <div className="slist">
-          {list.map((s) => (
-            <SessionRow key={s.id} session={s} expanded={expandedId === s.id} onClick={() => onToggle(s.id)} />
-          ))}
+          {list.map((e) =>
+            e.kind === 'session' ? (
+              <SessionRow
+                key={e.item.id}
+                session={e.item}
+                expanded={expandedId === e.item.id}
+                onClick={() => onToggle(e.item.id)}
+              />
+            ) : (
+              <CompRow
+                key={e.item.id}
+                comp={e.item}
+                expanded={expandedId === e.item.id}
+                onClick={() => onToggle(e.item.id)}
+              />
+            ),
+          )}
         </div>
       ) : (
         <div className="empty">
-          {data.sessions.length === 0
+          {data.sessions.length + data.competitions.length === 0
             ? 'No sessions yet — hit the + tab after class.'
-            : `No ${filter} sessions logged yet.`}
+            : `No ${filter} entries logged yet.`}
         </div>
       )}
     </div>

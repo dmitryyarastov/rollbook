@@ -49,3 +49,39 @@ revoke delete on public.app_state from anon;
 --   alter policy sessions_insert on public.sessions
 --     to authenticated with check (user_id = (select auth.uid()::text));
 -- backfill user_id once, and send the user's JWT as the Bearer token.
+
+-- ── Competitions (added 2026-08) ─────────────────────────────────────────────
+-- If the tables above already exist, paste and run JUST this section once.
+-- Same timestamp rule as above: app-authoritative, no now() defaults/triggers.
+-- matches is a jsonb array of {outcome, myPoints, theirPoints, submission};
+-- jsonb carries no per-field CHECKs, and with no auth the app sanitizes every
+-- pulled row anyway — the db only guards the outer shape here.
+
+create table if not exists public.competitions (
+  id           text primary key,
+  user_id      text not null default 'dmitrii',
+  date         date not null,
+  title        text not null default 'Competition',
+  gi           boolean not null,
+  cardio       integer not null check (cardio between 0 and 5),  -- 0 = unrated; 1 fine … 5 gassed
+  worked_well  text not null default '',
+  didnt_work   text not null default '',
+  matches      jsonb not null default '[]'::jsonb check (jsonb_typeof(matches) = 'array'),
+  created_at   timestamptz not null,
+  updated_at   timestamptz not null
+);
+
+create index if not exists competitions_user_date_idx on public.competitions (user_id, date);
+
+alter table public.competitions enable row level security;
+
+-- Postgres has no `create policy if not exists`; drop-then-create keeps this
+-- section idempotent.
+drop policy if exists competitions_select on public.competitions;
+drop policy if exists competitions_insert on public.competitions;
+drop policy if exists competitions_update on public.competitions;
+create policy competitions_select on public.competitions for select to anon using (true);
+create policy competitions_insert on public.competitions for insert to anon with check (user_id = 'dmitrii');
+create policy competitions_update on public.competitions for update to anon using (true) with check (user_id = 'dmitrii');
+
+revoke delete on public.competitions from anon;

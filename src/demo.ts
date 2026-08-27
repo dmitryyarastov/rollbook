@@ -14,7 +14,7 @@
  */
 import { addDays, mondayOf, parseIso } from './dates'
 import { DEFAULT_TAGS, emptyData } from './store'
-import type { AppData, RoundMin, Session } from './types'
+import type { AppData, Competition, RoundMin, Session } from './types'
 
 function mulberry32(seed: number): () => number {
   return () => {
@@ -165,9 +165,49 @@ export function demoData(todayIso: string): AppData {
       tags: spec.tags,
     }))
 
+  // Two showcase competitions (Saturdays 2 and 6 weeks back — always in the
+  // past, but the same year-boundary guard as sessions). demo- ids never sync.
+  const comp = (
+    i: number,
+    date: string,
+    over: Omit<Competition, 'id' | 'date' | 'createdAt' | 'updatedAt'>,
+  ): Competition => ({
+    id: `demo-comp-${i}`,
+    date,
+    createdAt: parseIso(date).getTime() + 10 * 3600_000 + i,
+    updatedAt: parseIso(date).getTime() + 10 * 3600_000 + i,
+    ...over,
+  })
+  const competitions: Competition[] = [
+    comp(0, addDays(curMon, -2 * 7 + 5), {
+      title: 'Regional Open',
+      gi: true,
+      cardio: 4,
+      workedWell: 'Grips and top pressure held up.',
+      didntWork: 'Gassed badly in match three.',
+      matches: [
+        { outcome: 'win', myPoints: 4, theirPoints: 2, submission: '' },
+        { outcome: 'win', myPoints: 0, theirPoints: 0, submission: 'Armbar' },
+        { outcome: 'loss', myPoints: 2, theirPoints: 5, submission: '' },
+      ],
+    }),
+    comp(1, addDays(curMon, -6 * 7 + 5), {
+      title: 'Competition',
+      gi: false,
+      cardio: 2,
+      workedWell: 'Wrestling up from butterfly.',
+      didntWork: 'Got caught extending in scrambles.',
+      matches: [
+        { outcome: 'win', myPoints: 6, theirPoints: 0, submission: '' },
+        { outcome: 'loss', myPoints: 0, theirPoints: 0, submission: 'Heel hook' },
+      ],
+    }),
+  ].filter((c) => c.date <= todayIso && c.date >= jan1)
+
   return {
     ...emptyData(),
     sessions,
+    competitions,
     tagList: [...DEFAULT_TAGS],
     focus: { title: 'Guard retention under pressure', tag: 'Guard retention' },
   }
