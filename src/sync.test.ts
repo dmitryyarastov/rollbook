@@ -30,6 +30,7 @@ function mk(over: Partial<Session> = {}): Session {
     subsAgainst: 2,
     roundMin: 5,
     tags: ['Half guard'],
+    time: null,
     ...over,
   }
 }
@@ -112,6 +113,14 @@ describe('row mapping', () => {
   it('keeps only string members of tags', () => {
     const s = fromRow({ ...toRow(mk()), tags: ['ok', 3, null, 'also ok'] })
     expect(s!.tags).toEqual(['ok', 'also ok'])
+  })
+
+  it('round-trips the session time and nulls anything malformed', () => {
+    expect(fromRow(toRow(mk({ time: '19:30' })))!.time).toBe('19:30')
+    expect(fromRow(toRow(mk()))!.time).toBeNull()
+    for (const bad of ['25:00', '7:30', '19:60', '7:30pm', 1930]) {
+      expect(fromRow({ ...toRow(mk()), time: bad })!.time).toBeNull()
+    }
   })
 })
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TabBar } from './components/TabBar'
-import { autoTitle, toIso } from './dates'
+import { autoTitle, resolveWhen, toHhmm, toIso } from './dates'
 import { demoData } from './demo'
 import { Home } from './screens/Home'
 import { Log } from './screens/Log'
@@ -28,7 +28,7 @@ function useTodayIso(): string {
   return iso
 }
 
-const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5, gi: true, tags: [] }
+const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5, gi: true, tags: [], when: null }
 const EMPTY_COMP_FORM: CompForm = { name: '', gi: true, cardio: 0, workedWell: '', didntWork: '', matches: [] }
 
 export default function App() {
@@ -85,21 +85,27 @@ export default function App() {
 
   const saveSession = () => {
     const now = new Date()
+    // The picked class time resolves to its most recent occurrence, so an
+    // evening session logged the next morning lands on the right day.
+    const start = resolveWhen(now, form.when)
     const session: Session = {
       id: uid(),
-      date: toIso(now),
+      date: toIso(start),
       createdAt: now.getTime(),
       updatedAt: now.getTime(),
-      title: autoTitle(now),
+      title: autoTitle(start),
       gi: form.gi,
       rolls: form.rolls,
       subsFor: form.subsFor,
       subsAgainst: form.subsAgainst,
       roundMin: form.roundMin,
       tags: form.tags,
+      time: toHhmm(start),
     }
     update((d) => ({ ...d, sessions: [...d.sessions, session] }))
-    setForm((f) => ({ ...f, rolls: 0, subsFor: 0, subsAgainst: 0, tags: [] }))
+    // `when` resets too: a stale picked time would silently re-date the next
+    // session (gi/roundMin stay — those are sticky preferences, not facts).
+    setForm((f) => ({ ...f, rolls: 0, subsFor: 0, subsAgainst: 0, tags: [], when: null }))
     setSaved(true)
     requestPush()
   }

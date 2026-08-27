@@ -163,6 +163,7 @@ export function demoData(todayIso: string): AppData {
       subsAgainst: spec.sa,
       roundMin: spec.dur,
       tags: spec.tags,
+      time: null,
     }))
 
   // Two showcase competitions (Saturdays 2 and 6 weeks back — always in the

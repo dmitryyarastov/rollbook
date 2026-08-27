@@ -43,6 +43,7 @@ interface SessionRow {
   subs_against: number
   round_min: number
   tags: string[]
+  time: string | null
   created_at: string
   updated_at: string
 }
@@ -59,6 +60,7 @@ export function toRow(s: Session): SessionRow {
     subs_against: s.subsAgainst,
     round_min: s.roundMin,
     tags: s.tags,
+    time: s.time,
     created_at: new Date(s.createdAt).toISOString(),
     updated_at: new Date(s.updatedAt).toISOString(),
   }
@@ -93,6 +95,7 @@ export function fromRow(r: unknown): Session | null {
     subsAgainst: count(o.subs_against),
     roundMin,
     tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string') : [],
+    time: typeof o.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.time) ? o.time : null,
   }
 }
 

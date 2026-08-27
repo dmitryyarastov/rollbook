@@ -63,6 +63,13 @@ describe('load', () => {
     expect(load().sessions[0].updatedAt).toBe(100)
   })
 
+  it('backfills session time to null for blobs from before the picker', () => {
+    stubStorage(JSON.stringify({ sessions: [session] }))
+    expect(load().sessions[0].time).toBeNull()
+    stubStorage(JSON.stringify({ sessions: [{ ...session, time: '19:30' }] }))
+    expect(load().sessions[0].time).toBe('19:30')
+  })
+
   it('returns fresh empty data when storage is empty or unparseable', () => {
     stubStorage(null)
     expect(load()).toEqual(emptyData())

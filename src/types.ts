@@ -14,6 +14,8 @@ export interface Session {
   subsAgainst: number
   roundMin: RoundMin
   tags: string[]
+  /** Session start, local 'HH:MM' (24h); null on rows from before the picker. */
+  time: string | null
 }
 
 export type CompOutcome = 'win' | 'loss' | 'draw'
@@ -76,6 +78,8 @@ export interface LogForm {
   roundMin: RoundMin
   gi: boolean
   tags: string[]
+  /** Picked start time 'HH:MM', or null = "now". */
+  when: string | null
 }
 
 export type LogMode = 'training' | 'comp'

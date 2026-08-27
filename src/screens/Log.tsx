@@ -1,10 +1,13 @@
 import { X } from '@phosphor-icons/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { autoTitle, fmtTime, resolveWhen, toIso } from '../dates'
 import { Chip } from '../components/Chip'
 import { Stepper } from '../components/Stepper'
 import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, RoundMin } from '../types'
 
 const DUR_OPTIONS: RoundMin[] = [4, 5, 6, 8]
+/** Pre-scheduled class slots (local, 24h): 7:30 PM no-gi, 8:30 PM gi. */
+const SCHEDULED_SLOTS = ['19:30', '20:30']
 const CARDIO_OPTIONS: CardioRating[] = [1, 2, 3, 4, 5]
 const OUTCOME_OPTIONS: { value: CompOutcome; label: string }[] = [
   { value: 'win', label: 'Win' },
@@ -98,6 +101,8 @@ export function Log({
       ) : (
         <>
       <div className="log-stack">
+        <WhenCard when={form.when} onPick={(when) => onPatch({ when })} />
+
         <section className="card card--lg log-card">
           <div className="kicker">Rounds sparred</div>
           <div className="stepper-row">
@@ -392,5 +397,53 @@ function MatchEditor({ match: m, index: i, onPatch, onRemove }: MatchEditorProps
         onChange={(e) => onPatch(i, { submission: e.target.value })}
       />
     </div>
+  )
+}
+
+interface WhenCardProps {
+  when: string | null
+  onPick: (when: string | null) => void
+}
+
+/**
+ * Session start picker: "Now" for logging right after class, the scheduled
+ * slots (and a free time input) for logging later — typically the morning
+ * after an evening class, which is why a not-yet-passed time means yesterday.
+ */
+function WhenCard({ when, onPick }: WhenCardProps) {
+  // Live clock: the today/yesterday caption must track the wall clock, or an
+  // idle screen promises one day while save (which re-resolves) writes another.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+  const start = resolveWhen(now, when)
+  const caption =
+    when === null
+      ? 'logged as right now'
+      : `${toIso(start) === toIso(now) ? 'today' : 'yesterday'} \u00b7 ${autoTitle(start)}`
+  return (
+    <section className="card card--lg log-card">
+      <div className="kicker">When</div>
+      <div className="when-row">
+        <Chip variant="dur" on={when === null} onClick={() => onPick(null)}>
+          Now
+        </Chip>
+        {SCHEDULED_SLOTS.map((t) => (
+          <Chip key={t} variant="dur" on={when === t} onClick={() => onPick(t)}>
+            {fmtTime(t)}
+          </Chip>
+        ))}
+        <input
+          className="input input--time"
+          type="time"
+          value={when ?? ''}
+          aria-label="Session start time"
+          onChange={(e) => onPick(e.target.value || null)}
+        />
+      </div>
+      <div className="dur-cap">{caption}</div>
+    </section>
   )
 }

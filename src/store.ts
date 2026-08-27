@@ -43,6 +43,7 @@ export function load(): AppData {
       sessions: (Array.isArray(parsed.sessions) ? parsed.sessions : base.sessions).map((s) => ({
         ...s,
         updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
+        time: typeof s.time === 'string' ? s.time : null,
       })),
       // Blobs from before the competitions feature simply gain the empty array.
       competitions: Array.isArray(parsed.competitions) ? parsed.competitions : base.competitions,

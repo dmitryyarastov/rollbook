@@ -46,11 +46,14 @@ foregrounding the PWA. localStorage stays the offline source of truth; sync
 never blocks the UI, and a paused/unreachable project just shows a quiet
 "sync error" on Home while everything keeps working locally.
 
-- Schema: [supabase-schema.sql](supabase-schema.sql) (run once in the SQL editor;
-  if the original tables already exist, paste just the delimited
-  "Competitions" section — the app tolerates the table missing and keeps
-  competitions local until it exists). Sessions and competitions land in
-  plain Postgres tables — query them from the dashboard or psql:
+- Schema: [supabase-schema.sql](supabase-schema.sql) (run once in the SQL editor).
+  On an existing project, run each delimited addendum section at the bottom
+  you haven't run yet — all are idempotent. The "Session start time" ALTER is
+  **required** for builds with the When picker: until it runs, session pushes
+  400 and sync shows an error (data stays safe locally). A missing
+  competitions table is merely tolerated (comps stay local until it exists).
+  Sessions and competitions land in plain Postgres tables — query them from
+  the dashboard or psql:
   `select tag, count(*) from sessions, unnest(tags) tag group by 1;`
 - Merges are last-write-wins by `updatedAt`; remote is never authoritative
   for deletions, and the anon role cannot DELETE at all.
@@ -120,6 +123,11 @@ styled in-system:
   submission editors, what worked / what didn't) — all styled in-system.
 - Auto-titles at save time: Morning/Afternoon/Evening class on weekdays,
   Open mat on weekends. Empty states are quiet neutral-500 hints.
+- **"When" picker** on the Log form: Now, the scheduled class slots
+  (7:30 PM no-gi / 8:30 PM gi), or a free time input. A picked time resolves
+  to its most recent occurrence — an evening class logged the next morning
+  lands on the right day with the right title — and is stored on the session
+  ('HH:MM', shown in history rows).
 
 ## Code map
 

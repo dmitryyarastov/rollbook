@@ -377,6 +377,7 @@
 }
 .input {
   width: 100%;
+  font-family: inherit; /* form controls don't inherit the body font */
   background: var(--color-bg);
   border: 1px solid var(--color-neutral-700);
   border-radius: var(--radius-md);
@@ -634,6 +635,7 @@
 
 .chip-input {
   width: 118px;
+  font-family: inherit;
   padding: 7px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-accent);
@@ -832,6 +834,23 @@
   color: var(--color-accent-300);
 }
 
+/* ── Log: when (session start) ── */
+
+.when-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  justify-content: center;
+  align-items: center;
+}
+.input--time {
+  width: auto;
+  padding: 7px 10px;
+  font-size: 13px;
+  color-scheme: dark;
+}
+
 /* ── Log: competition mode ── */
 
 .log-mode {
@@ -923,7 +942,6 @@
   line-height: 1.45;
   resize: none;
   min-height: 64px;
-  font-family: inherit;
 }
 
 /* ── Techniques screen ── */

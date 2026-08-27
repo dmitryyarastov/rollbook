@@ -61,6 +61,32 @@ export function dayOfYear(iso: string): number {
   return Math.round((d.getTime() - jan1.getTime()) / 86400000) + 1
 }
 
+/** 'HH:MM' (24h) of a Date's local wall-clock time. */
+export function toHhmm(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** '7:30 PM' from 'HH:MM'. */
+export function fmtTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+/**
+ * Resolve a picked class time to a concrete local datetime: the most recent
+ * occurrence of that wall-clock time — today if it has already passed, else
+ * yesterday (the "logging the morning after an evening class" case). null =
+ * right now. Day-overflow Date arithmetic keeps month/DST boundaries safe.
+ */
+export function resolveWhen(now: Date, hhmm: string | null): Date {
+  if (!hhmm) return now
+  const [h, m] = hhmm.split(':').map(Number)
+  const cand = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+  return cand > now ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m) : cand
+}
+
 /**
  * Title for a session logged at `when`: weekday mornings/afternoons/evenings
  * are classes, weekends are open mats. Computed once at save time and stored.

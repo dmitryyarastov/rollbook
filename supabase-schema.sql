@@ -85,3 +85,11 @@ create policy competitions_insert on public.competitions for insert to anon with
 create policy competitions_update on public.competitions for update to anon using (true) with check (user_id = 'dmitrii');
 
 revoke delete on public.competitions from anon;
+
+-- ── Session start time (added 2026-08) ───────────────────────────────────────
+-- Local wall-clock 'HH:MM' of when the session actually started (the log form
+-- gained a time picker — sessions are often logged the morning after). Null on
+-- rows from before the picker. Idempotent; run once.
+
+alter table public.sessions add column if not exists "time" text
+  check ("time" is null or "time" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$');

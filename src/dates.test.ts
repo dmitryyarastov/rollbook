@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, autoTitle, dayOfYear, fmtShort, fmtToday, mondayOf, parseIso, toIso, weekdayBadge } from './dates'
+import { addDays, autoTitle, dayOfYear, fmtShort, fmtTime, fmtToday, mondayOf, parseIso, resolveWhen, toHhmm, toIso, weekdayBadge } from './dates'
 
 describe('dates', () => {
   it('round-trips local iso dates', () => {
@@ -38,5 +38,34 @@ describe('dates', () => {
     expect(autoTitle(new Date(2026, 7, 3, 19, 30))).toBe('Evening class')
     expect(autoTitle(new Date(2026, 7, 1, 11, 0))).toBe('Open mat') // Saturday
     expect(autoTitle(new Date(2026, 7, 2, 19, 0))).toBe('Open mat') // Sunday evening
+  })
+})
+
+describe('time helpers (session start picker)', () => {
+  it('formats HH:MM as 12-hour clock', () => {
+    expect(fmtTime('19:30')).toBe('7:30 PM')
+    expect(fmtTime('09:05')).toBe('9:05 AM')
+    expect(fmtTime('00:15')).toBe('12:15 AM')
+    expect(fmtTime('12:00')).toBe('12:00 PM')
+  })
+
+  it('extracts local HH:MM from a Date', () => {
+    expect(toHhmm(new Date(2026, 7, 26, 19, 30))).toBe('19:30')
+    expect(toHhmm(new Date(2026, 7, 26, 7, 5))).toBe('07:05')
+  })
+
+  it('resolveWhen: null means now; a passed time means today', () => {
+    const now = new Date(2026, 7, 26, 22, 0)
+    expect(resolveWhen(now, null)).toBe(now)
+    expect(resolveWhen(now, '19:30')).toEqual(new Date(2026, 7, 26, 19, 30))
+  })
+
+  it('resolveWhen: a not-yet-passed time means yesterday (morning-after logging)', () => {
+    const morning = new Date(2026, 7, 26, 9, 0)
+    expect(resolveWhen(morning, '19:30')).toEqual(new Date(2026, 7, 25, 19, 30))
+  })
+
+  it('resolveWhen: crosses month boundaries via day-overflow arithmetic', () => {
+    expect(resolveWhen(new Date(2026, 8, 1, 7, 0), '20:30')).toEqual(new Date(2026, 7, 31, 20, 30))
   })
 })
