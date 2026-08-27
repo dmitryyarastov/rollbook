@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
@@ -25,10 +26,15 @@ interface HomeProps {
 
 export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
   const goal = data.settings.weeklyGoal
-  const week = weekSummary(data.sessions, todayIso)
-  const st = streak(data.sessions, goal, todayIso)
-  const subs = subs30d(data.sessions, todayIso)
-  const recent = historyFeed(data.sessions, data.competitions).slice(0, 3)
+  const { week, st, subs, recent } = useMemo(
+    () => ({
+      week: weekSummary(data.sessions, todayIso),
+      st: streak(data.sessions, goal, todayIso),
+      subs: subs30d(data.sessions, todayIso),
+      recent: historyFeed(data.sessions, data.competitions).slice(0, 3),
+    }),
+    [data.sessions, data.competitions, goal, todayIso],
+  )
   const maxBar = Math.max(...week.bars.map((b) => b.rolls), 1)
 
   return (

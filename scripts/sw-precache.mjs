@@ -16,7 +16,9 @@ function walk(dir) {
 
 const files = walk(dist)
   .map((f) => './' + relative(dist, f).split('\\').join('/'))
-  .filter((f) => f !== './sw.js' && f !== './index.html')
+  // .woff is only a fallback for pre-2016 browsers; precaching it would
+  // download ~62KB nobody uses. Runtime caching still covers a request.
+  .filter((f) => f !== './sw.js' && f !== './index.html' && !f.endsWith('.woff'))
 
 const precache = ['./', ...files.sort()]
 const hash = createHash('sha256').update(precache.join('\n')).digest('hex').slice(0, 10)

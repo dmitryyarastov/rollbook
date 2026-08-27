@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TabBar } from './components/TabBar'
 import { autoTitle, resolveWhen, toHhmm, toIso } from './dates'
 import { demoData } from './demo'
@@ -82,6 +82,13 @@ export default function App() {
     setLogMode(m)
     setSaved(false)
   }
+
+  // Form state lives here, so every Log keystroke re-renders App; the tag
+  // ordering only actually depends on the data.
+  const logTagList = useMemo(
+    () => orderTagsByCurriculum(withSessionTags(data.tagList, data.sessions)),
+    [data.tagList, data.sessions],
+  )
 
   const saveSession = () => {
     const now = new Date()
@@ -178,7 +185,7 @@ export default function App() {
             compForm={compForm}
             onPatchComp={patchComp}
             onSaveComp={saveComp}
-            tagList={orderTagsByCurriculum(withSessionTags(data.tagList, data.sessions))}
+            tagList={logTagList}
             onAddTag={addTag}
             onSave={saveSession}
             saved={saved}

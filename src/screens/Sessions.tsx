@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Chip } from '../components/Chip'
 import { CompRow } from '../components/CompRow'
 import { SessionRow } from '../components/SessionRow'
@@ -15,8 +16,13 @@ interface SessionsProps {
 }
 
 export function Sessions({ data, filter, onFilter, expandedId, onToggle }: SessionsProps) {
-  const list = historyFeed(data.sessions, data.competitions).filter(
-    (e) => filter === 'All' || (filter === 'Gi') === e.item.gi,
+  // Accordion toggles re-render this screen; the feed only depends on data.
+  const list = useMemo(
+    () =>
+      historyFeed(data.sessions, data.competitions).filter(
+        (e) => filter === 'All' || (filter === 'Gi') === e.item.gi,
+      ),
+    [data.sessions, data.competitions, filter],
   )
 
   return (

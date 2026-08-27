@@ -10,6 +10,11 @@ Five screens behind a bottom tab bar; the raised center tab is the
 competition entries record matches (outcome, points, submission), one
 cardio rating for the event, and what worked / what didn't.
 
+System documentation for contributors (and AI agents) lives in
+[docs/](docs/) — architecture, data model, sync protocol, stats semantics,
+curriculum mapping, design system, build/PWA, testing, and operations —
+with [CLAUDE.md](CLAUDE.md) as the entry point and invariants digest.
+
 ## Run it
 
 ```bash

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { FocusCard } from '../components/FocusCard'
 import { groupTagsByCurriculum } from '../curriculum'
 import { focusProgress, tagCounts30d, withSessionTags } from '../stats'
@@ -10,11 +11,16 @@ interface TechniquesProps {
 }
 
 export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
-  const counts = tagCounts30d(data.sessions, todayIso)
-  const top = counts.filter((c) => c.n > 0).slice(0, 6)
-  const max = top[0]?.n ?? 1
-  const byName = new Map(counts.map((c) => [c.name, c.n]))
-  const sections = groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions))
+  const { top, max, byName, sections } = useMemo(() => {
+    const counts = tagCounts30d(data.sessions, todayIso)
+    const top = counts.filter((c) => c.n > 0).slice(0, 6)
+    return {
+      top,
+      max: top[0]?.n ?? 1,
+      byName: new Map(counts.map((c) => [c.name, c.n])),
+      sections: groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions)),
+    }
+  }, [data.sessions, data.tagList, todayIso])
 
   return (
     <div className="screen">
