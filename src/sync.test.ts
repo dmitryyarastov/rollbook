@@ -49,12 +49,14 @@ function mkComp(over: Partial<Competition> = {}): Competition {
     title: 'Regional Open',
     gi: true,
     cardio: 4,
+    placement: 'none',
     workedWell: 'Grips held up',
     didntWork: 'Gassed in match 3',
     matches: [
       { outcome: 'win', myPoints: 4, theirPoints: 2, submission: '' },
       { outcome: 'loss', myPoints: 0, theirPoints: 0, submission: 'Armbar' },
     ],
+    tags: [],
     ...over,
   }
 }
@@ -178,6 +180,16 @@ describe('competition row mapping', () => {
     ])
   })
 
+  it('round-trips placement and tags; sanitizes tampered values', () => {
+    const c = mkComp({ placement: 'silver', tags: ['DLR X', 'Open guard'] })
+    expect(fromCompRow(toCompRow(c))).toEqual(c)
+    const bad = fromCompRow({ ...toCompRow(mkComp()), placement: 'platinum', tags: ['ok', 7, null] })
+    expect(bad!.placement).toBe('none')
+    expect(bad!.tags).toEqual(['ok'])
+    expect(fromCompRow({ ...toCompRow(mkComp()), placement: 9, tags: 'not-an-array' })!.placement).toBe('none')
+    expect(fromCompRow({ ...toCompRow(mkComp()), tags: 'not-an-array' })!.tags).toEqual([])
+  })
+
   it('caps a tampered match list at 50 entries', () => {
     const many = Array.from({ length: 60 }, () => ({ outcome: 'win', myPoints: 0, theirPoints: 0, submission: '' }))
     expect(fromCompRow({ ...toCompRow(mkComp()), matches: many })!.matches).toHaveLength(50)
@@ -293,6 +305,16 @@ describe('fromStateRow', () => {
     })
     expect(st).toMatchObject({ focus: { title: 'T', tag: 'x' }, tagList: ['x'] })
     expect(st!.updatedAt).toBe(Date.parse('2026-08-04T10:00:00.5+00:00'))
+  })
+
+  it('clamps weeklyGoal to a positive integer (a 0 goal would stall the streak walk)', () => {
+    const row = (weeklyGoal: unknown) =>
+      fromStateRow({ state: { settings: { weeklyGoal, showMilestones: true } }, updated_at: '2026-08-04T10:00:00Z' })
+    expect(row(0)!.settings.weeklyGoal).toBe(2)
+    expect(row(-3)!.settings.weeklyGoal).toBe(2)
+    expect(row(Number.NaN)!.settings.weeklyGoal).toBe(2)
+    expect(row(2.6)!.settings.weeklyGoal).toBe(3)
+    expect(row(4)!.settings.weeklyGoal).toBe(4)
   })
 
   it('falls back to defaults for malformed fields and rejects bad timestamps', () => {

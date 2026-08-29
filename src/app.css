@@ -1026,6 +1026,37 @@
   margin-bottom: 8px;
 }
 
+/* ── Progress: streak flames ── */
+
+.frow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+}
+.frow-flame {
+  display: flex;
+  align-items: center;
+  color: var(--color-accent-300);
+}
+.frow--cold .frow-flame {
+  color: var(--color-neutral-600);
+}
+.frow-n {
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
+  min-width: 34px;
+}
+.frow--cold .frow-n {
+  color: var(--color-neutral-500);
+}
+.frow-label {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--color-neutral-300);
+}
+
 /* ── Progress screen ── */
 
 .streak-card {

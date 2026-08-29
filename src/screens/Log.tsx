@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { autoTitle, fmtTime, resolveWhen, toIso } from '../dates'
 import { Chip } from '../components/Chip'
 import { Stepper } from '../components/Stepper'
-import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, RoundMin } from '../types'
+import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, Placement, RoundMin } from '../types'
 
 const DUR_OPTIONS: RoundMin[] = [4, 5, 6, 8]
 /** Pre-scheduled class slots (local, 24h): 7:30 PM no-gi, 8:30 PM gi. */
@@ -16,6 +16,12 @@ const OUTCOME_OPTIONS: { value: CompOutcome; label: string }[] = [
 ]
 /** Mirrors the sync-side cap — a comp larger than this would truncate on pull. */
 const MAX_MATCHES = 50
+const PLACEMENT_OPTIONS: { value: Placement; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'bronze', label: 'Bronze' },
+  { value: 'silver', label: 'Silver' },
+  { value: 'gold', label: 'Gold' },
+]
 
 interface LogProps {
   form: LogForm
@@ -97,7 +103,13 @@ export function Log({
       </div>
 
       {comp ? (
-        <CompFields compForm={compForm} onPatchComp={onPatchComp} onSaveComp={onSaveComp} saved={saved} />
+        <CompFields
+          compForm={compForm}
+          onPatchComp={onPatchComp}
+          onSaveComp={onSaveComp}
+          saved={saved}
+          tagList={tagList}
+        />
       ) : (
         <>
       <div className="log-stack">
@@ -225,9 +237,10 @@ interface CompFieldsProps {
   onPatchComp: (patch: Partial<CompForm>) => void
   onSaveComp: () => void
   saved: boolean
+  tagList: string[]
 }
 
-function CompFields({ compForm, onPatchComp, onSaveComp, saved }: CompFieldsProps) {
+function CompFields({ compForm, onPatchComp, onSaveComp, saved, tagList }: CompFieldsProps) {
   const wins = compForm.matches.filter((m) => m.outcome === 'win').length
   const losses = compForm.matches.filter((m) => m.outcome === 'loss').length
   const draws = compForm.matches.filter((m) => m.outcome === 'draw').length
@@ -266,6 +279,19 @@ function CompFields({ compForm, onPatchComp, onSaveComp, saved }: CompFieldsProp
             ))}
           </div>
           <div className="dur-cap">cardio — 1 fine · 5 gassed</div>
+          <div className="dur-row">
+            {PLACEMENT_OPTIONS.map((o) => (
+              <Chip
+                key={o.value}
+                variant="dur"
+                on={compForm.placement === o.value}
+                onClick={() => onPatchComp({ placement: o.value })}
+              >
+                {o.label}
+              </Chip>
+            ))}
+          </div>
+          <div className="dur-cap">podium</div>
         </section>
 
         <section className="card card--lg log-card">
@@ -285,6 +311,31 @@ function CompFields({ compForm, onPatchComp, onSaveComp, saved }: CompFieldsProp
           <button className="chip chip--tech match-add" onClick={addMatch}>
             + Add match
           </button>
+        </section>
+
+        <section className="card card--lg log-card">
+          <div className="tech-head">
+            <div className="kicker">Techniques worked</div>
+            <div className="tech-hint">tap to tag</div>
+          </div>
+          <div className="chip-wrap log-tags">
+            {tagList.map((t) => (
+              <Chip
+                key={t}
+                variant="tech"
+                on={compForm.tags.includes(t)}
+                onClick={() =>
+                  onPatchComp({
+                    tags: compForm.tags.includes(t)
+                      ? compForm.tags.filter((x) => x !== t)
+                      : [...compForm.tags, t],
+                  })
+                }
+              >
+                {t}
+              </Chip>
+            ))}
+          </div>
         </section>
 
         <section className="card card--lg log-card">

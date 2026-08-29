@@ -4,7 +4,8 @@
  * timezone- and clock-proof. Weeks run Monday–Sunday.
  */
 import type { Competition, Session } from './types'
-import { addDays, dayOfYear, fmtShort, mondayOf, monthFull, parseIso } from './dates'
+import { isOpenGuardTag } from './curriculum'
+import { addDays, dayOfYear, fmtShort, mondayOf, monthFull } from './dates'
 
 export const sessionMinutes = (s: Session) => s.rolls * s.roundMin
 export const sessionHours = (s: Session) => sessionMinutes(s) / 60
@@ -77,11 +78,13 @@ export function weekSummary(sessions: Session[], todayIso: string): WeekSummary 
 
 // ── Streak ───────────────────────────────────────────────────────────────────
 
-function sessionsPerWeek(sessions: Session[]): Map<string, number> {
-  const m = new Map<string, number>()
+function sessionsByWeek(sessions: Session[]): Map<string, Session[]> {
+  const m = new Map<string, Session[]>()
   for (const s of sessions) {
     const k = mondayOf(s.date)
-    m.set(k, (m.get(k) ?? 0) + 1)
+    const list = m.get(k)
+    if (list) list.push(s)
+    else m.set(k, [s])
   }
   return m
 }
@@ -93,26 +96,53 @@ export interface Streak {
 }
 
 /**
- * Consecutive fully-elapsed weeks meeting `goal`, walking back from last
- * week — plus the current week once it already qualifies. An unfinished
- * current week never breaks the streak.
+ * Consecutive weeks whose sessions satisfy `qualifies`, walking back from
+ * last week — plus the current week once it already qualifies. An unfinished
+ * current week never breaks the streak. The shared walk behind every flame
+ * on the Progress screen.
  */
-export function streak(sessions: Session[], goal: number, todayIso: string): Streak {
-  const perWeek = sessionsPerWeek(sessions)
+export function weeklyStreak(
+  sessions: Session[],
+  todayIso: string,
+  qualifies: (week: Session[]) => boolean,
+): Streak {
+  const byWeek = sessionsByWeek(sessions)
   const curMon = mondayOf(todayIso)
+  // Bounded at the earliest logged week: a predicate that accepts an empty
+  // week (e.g. a tampered weeklyGoal of 0) must not walk the calendar
+  // forever. Legit predicates all reject empty weeks, so the bound never
+  // shortens a real streak.
+  let earliest = curMon
+  for (const k of byWeek.keys()) if (k < earliest) earliest = k
   let weeks = 0
   let sinceIso: string | null = null
-  if ((perWeek.get(curMon) ?? 0) >= goal) {
+  if (qualifies(byWeek.get(curMon) ?? [])) {
     weeks++
     sinceIso = curMon
   }
   let w = addDays(curMon, -7)
-  while ((perWeek.get(w) ?? 0) >= goal) {
+  while (w >= earliest && qualifies(byWeek.get(w) ?? [])) {
     weeks++
     sinceIso = w
     w = addDays(w, -7)
   }
   return { weeks, sinceIso }
+}
+
+/** Consecutive weeks with at least `goal` sessions (the original streak). */
+export function streak(sessions: Session[], goal: number, todayIso: string): Streak {
+  return weeklyStreak(sessions, todayIso, (week) => week.length >= goal)
+}
+
+/** Consecutive weeks with at least one gi AND one no-gi session. */
+export function giNoGiStreak(sessions: Session[], todayIso: string): Streak {
+  return weeklyStreak(sessions, todayIso, (week) => week.some((s) => s.gi) && week.some((s) => !s.gi))
+}
+
+/** Consecutive weeks with at least one session tagged the focus tag. */
+export function focusStreak(sessions: Session[], focusTag: string, todayIso: string): Streak {
+  if (!focusTag) return { weeks: 0, sinceIso: null }
+  return weeklyStreak(sessions, todayIso, (week) => week.some((s) => s.tags.includes(focusTag)))
 }
 
 // ── 30-day aggregates ────────────────────────────────────────────────────────
@@ -196,50 +226,42 @@ export interface Milestone {
   sub: string
 }
 
-const QUARTER_TARGET = 100
-const STREAK_TARGET = 10
-const YEAR_TARGET = 500
+/**
+ * Recalibrated 2026-08-30 from live data ("plan the most easily fulfillable"):
+ * 40 rolls logged at ~11.2/week with 17.6 weeks left projected ~237 by Dec 31
+ * on current pace, ~251 on the new two-classes-per-evening schedule. 250 is
+ * the honest reachable target; the original 500 needed a fantasy 28/week.
+ */
+const YEAR_TARGET = 250
 
-function quarterKey(iso: string): string {
-  const d = parseIso(iso)
-  return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3)}`
-}
+const PLACEMENT_LABEL = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', none: '' } as const
 
-/** 100 rounds inside one calendar quarter; sub = most recent crossing date. */
-export function quarterMilestone(sessions: Session[], todayIso: string): Milestone {
-  const title = `${QUARTER_TARGET} rounds in a quarter`
-  const running = new Map<string, number>()
-  let hitIso: string | null = null
-  for (const s of sortByDateAsc(sessions)) {
-    const q = quarterKey(s.date)
-    const prev = running.get(q) ?? 0
-    running.set(q, prev + s.rolls)
-    if (prev < QUARTER_TARGET && prev + s.rolls >= QUARTER_TARGET) hitIso = s.date
-  }
-  if (hitIso) return { achieved: true, title, sub: `Hit ${fmtShort(hitIso)}` }
-  const now = running.get(quarterKey(todayIso)) ?? 0
-  return { achieved: false, title, sub: `${now} / ${QUARTER_TARGET} this quarter` }
+const byDateAsc = <T extends { date: string }>(items: T[]): T[] =>
+  [...items].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+
+/**
+ * Goal: podium at AJP World Pro Amateurs. Achieved by the earliest
+ * competition whose title mentions AJP and carries a placement — a medal at
+ * a non-AJP comp shows on its own row but does not complete this goal.
+ */
+export function medalMilestone(competitions: Competition[]): Milestone {
+  const title = 'Medal at AJP World Pro Ams'
+  const hit = byDateAsc(competitions).find((c) => /ajp/i.test(c.title) && c.placement !== 'none')
+  if (hit) return { achieved: true, title, sub: `${PLACEMENT_LABEL[hit.placement]} at ${hit.title} — ${fmtShort(hit.date)}` }
+  return { achieved: false, title, sub: 'No AJP podium yet' }
 }
 
 /**
- * Ten consecutive completed weeks meeting `goal`. Achieved the Monday after
- * the 10th week wraps (the display streak may count an in-progress week; a
- * milestone only counts finished ones).
+ * Goal: play open guard in competition. Achieved by the earliest competition
+ * tagged with any open-guard-family tag (see curriculum.ts — isOpenGuardTag).
  */
-export function streakMilestone(sessions: Session[], goal: number, todayIso: string): Milestone {
-  const title = `${STREAK_TARGET}-week streak`
-  const perWeek = sessionsPerWeek(sessions)
-  const weeks = [...perWeek.keys()].sort()
-  let run = 0
-  if (weeks.length > 0) {
-    const lastCompletedMon = addDays(mondayOf(todayIso), -7)
-    for (let w = weeks[0]; w <= lastCompletedMon; w = addDays(w, 7)) {
-      run = (perWeek.get(w) ?? 0) >= goal ? run + 1 : 0
-      if (run === STREAK_TARGET) return { achieved: true, title, sub: `Hit ${fmtShort(addDays(w, 7))}` }
-    }
+export function openGuardMilestone(competitions: Competition[]): Milestone {
+  const title = 'Open guard in competition'
+  for (const c of byDateAsc(competitions)) {
+    const tag = c.tags.find(isOpenGuardTag)
+    if (tag) return { achieved: true, title, sub: `${tag} at ${c.title} — ${fmtShort(c.date)}` }
   }
-  // `run` is now the trailing completed-weeks run — the honest progress figure.
-  return { achieved: false, title, sub: `${run} / ${STREAK_TARGET} weeks` }
+  return { achieved: false, title, sub: 'Play it, then tag it on the comp entry' }
 }
 
 /** 500 rounds in the calendar year; in progress shows a linear pace month. */
@@ -264,10 +286,6 @@ export function yearMilestone(sessions: Session[], todayIso: string): Milestone 
   return { achieved: false, title, sub }
 }
 
-export function milestones(sessions: Session[], goal: number, todayIso: string): Milestone[] {
-  return [
-    quarterMilestone(sessions, todayIso),
-    streakMilestone(sessions, goal, todayIso),
-    yearMilestone(sessions, todayIso),
-  ]
+export function milestones(sessions: Session[], competitions: Competition[], todayIso: string): Milestone[] {
+  return [medalMilestone(competitions), openGuardMilestone(competitions), yearMilestone(sessions, todayIso)]
 }

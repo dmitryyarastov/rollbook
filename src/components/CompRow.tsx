@@ -9,6 +9,7 @@ interface CompRowProps {
 }
 
 const OUTCOME_LABEL = { win: 'WIN', loss: 'LOSS', draw: 'DRAW' } as const
+const PLACEMENT_LABEL = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' } as const
 
 /** History row for a competition — SessionRow's accordion pattern (button root, span children). */
 export function CompRow({ comp: c, expanded = false, onClick }: CompRowProps) {
@@ -29,8 +30,14 @@ export function CompRow({ comp: c, expanded = false, onClick }: CompRowProps) {
         <span className="srow-body">
           <span className="srow-title">{c.title}</span>
           <span className="srow-meta">
-            {fmtShort(c.date)} · {c.gi ? 'Gi' : 'No-Gi'} · {c.matches.length}{' '}
-            {c.matches.length === 1 ? 'match' : 'matches'}
+            {[
+              fmtShort(c.date),
+              c.gi ? 'Gi' : 'No-Gi',
+              `${c.matches.length} ${c.matches.length === 1 ? 'match' : 'matches'}`,
+              c.placement !== 'none' && PLACEMENT_LABEL[c.placement],
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
         </span>
         <span className="srow-right">
@@ -69,6 +76,15 @@ export function CompRow({ comp: c, expanded = false, onClick }: CompRowProps) {
             <span className="crow-note">
               <span className="micro">WHAT DIDN’T</span>
               <span className="crow-note-text">{c.didntWork}</span>
+            </span>
+          )}
+          {c.tags.length > 0 && (
+            <span className="srow-tags">
+              {c.tags.map((t) => (
+                <span key={t} className="tagchip">
+                  {t}
+                </span>
+              ))}
             </span>
           )}
         </span>

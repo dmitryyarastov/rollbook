@@ -184,8 +184,10 @@ export function demoData(todayIso: string): AppData {
       title: 'Regional Open',
       gi: true,
       cardio: 4,
+      placement: 'bronze',
       workedWell: 'Grips and top pressure held up.',
       didntWork: 'Gassed badly in match three.',
+      tags: ['De La Riva', 'Sweeps'],
       matches: [
         { outcome: 'win', myPoints: 4, theirPoints: 2, submission: '' },
         { outcome: 'win', myPoints: 0, theirPoints: 0, submission: 'Armbar' },
@@ -196,8 +198,10 @@ export function demoData(todayIso: string): AppData {
       title: 'Competition',
       gi: false,
       cardio: 2,
+      placement: 'none',
       workedWell: 'Wrestling up from butterfly.',
       didntWork: 'Got caught extending in scrambles.',
+      tags: [],
       matches: [
         { outcome: 'win', myPoints: 6, theirPoints: 0, submission: '' },
         { outcome: 'loss', myPoints: 0, theirPoints: 0, submission: 'Heel hook' },

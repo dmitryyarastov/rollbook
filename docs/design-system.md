@@ -68,8 +68,9 @@ All component CSS lives in `src/app.css` as **ordered sections** delimited by `/
 13. `Log: competition mode` — `.log-mode`, `.match`, `.match-*`, `.input--sm`, `.input--area`
 14. `Techniques screen` — `.trows`, `.trow`, `.tag-cloud`, `.tagstat`
 15. `Techniques: curriculum groups` — `.cloud-group`, `.cloud-group-label`
-16. `Progress screen` — `.streak-card`, `.ring`, `.vol-card`, `.mrows`
-17. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
+16. `Progress: streak flames` — `.frow`, `.frow-flame`, `.frow-n`, `.frow-label`, `.frow--cold`
+17. `Progress screen` — `.streak-card`, `.ring`, `.vol-card`, `.mrows`
+18. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
 
 **Where a new section goes:** shared primitives extend an existing early section (Type/Cards/Chips); a screen-specific block goes adjacent to its screen's existing sections, sub-scoped with a `Screen: feature` title (the pattern set by `Log: when` and `Techniques: curriculum groups`). The tab bar stays last. Never scatter a component's rules across sections.
 
@@ -90,7 +91,7 @@ Props: `{ on: boolean; onClick: () => void; children; variant?: 'filter' | 'dur'
 Chip **selection semantics are the caller's job**, and both idioms are established:
 
 - **Single-select (radio-like):** `on={value === option}`, click sets — gi/no-gi and training/comp rows in `src/screens/Log.tsx`, round-length `DUR_OPTIONS`, history filter in `src/screens/Sessions.tsx`, match outcome. Two of these allow **toggle-off to empty**: cardio rating (`compForm.cardio === n ? 0 : n`) and the FocusCard linked tag (re-tap clears to `''`).
-- **Multi-select:** technique tags in Log (`form.tags.includes(t)`, click toggles membership).
+- **Multi-select:** technique tags in Log — both the training form (`form.tags.includes(t)`, click toggles membership) and the comp form's "Techniques worked" wrap (`compForm.tags`, same toggle; **toggle-only** — no `+ Add` chip there, new tags are minted from the training form).
 
 The trailing `+ Add` control in the Log tag picker is a bare `<button class="chip chip--tech">` (not the Chip component — it has no on-state), which swaps to `.chip-input` (an accent-bordered inline text input, width 118px) while adding; commit on Enter/blur, cancel on Escape, guarded by a `committed` ref against double-commit. `+ Add match` in comp mode reuses the same bare-chip-button idiom.
 
@@ -102,7 +103,7 @@ Props: `{ kind: 'minus' | 'plus'; size: 'lg' | 'sm'; accent?: boolean; label: st
 
 `src/components/SessionRow.tsx` and `src/components/CompRow.tsx` share one CSS block (`.srow`) and one structural rule: **the row root is a single `<button class="card srow">` with `aria-expanded`, and therefore every descendant is a `<span>`, never a `<div>`** — divs inside buttons are invalid HTML that browsers will silently re-parent, breaking layout. Since spans are inline by default, app.css force-blocks the structural children (`.srow-body, .srow-title, .srow-meta, .srow-panel, ... { display: block }`, plus per-class `display: block` on every `crow-*` child and flex on the row containers). **If you add an element inside these rows, it must be a span and you must give its class an explicit `display` in app.css.**
 
-Anatomy: `.srow-main` (always visible) = 40px `.srow-badge` (weekday letters via `weekdayBadge` in `src/dates.ts`; `--gi` accent-tinted for gi sessions; `--comp` shows a Trophy icon with an accent border) + `.srow-title`/`.srow-meta` body + `.srow-right` (big number `.srow-rolls` over a `.micro` caption — rounds count for sessions, W-L(-D) record string for comps). When `expanded`, `.srow-panel` renders below a `neutral-800` border-top: sessions show a `.srow-stats` triplet + `.tagchip` list; comps show per-match lines (`.crow-match`: outcome pill + score + optional submission), a cardio line, and the two note blocks. `.srow--open` swaps the card border to `accent-800`. Expansion state lives in the parent (`expandedId` in `src/App.tsx` — single-open accordion; Home rows navigate to Sessions and open there instead).
+Anatomy: `.srow-main` (always visible) = 40px `.srow-badge` (weekday letters via `weekdayBadge` in `src/dates.ts`; `--gi` accent-tinted for gi sessions; `--comp` shows a Trophy icon with an accent border) + `.srow-title`/`.srow-meta` body + `.srow-right` (big number `.srow-rolls` over a `.micro` caption — rounds count for sessions, W-L(-D) record string for comps). A comp's `.srow-meta` appends the podium label (Bronze/Silver/Gold) after the match count when `placement !== 'none'` — the parts are `filter(Boolean).join(' · ')`-ed, so an unplaced comp shows no placement segment. When `expanded`, `.srow-panel` renders below a `neutral-800` border-top: sessions show a `.srow-stats` triplet + `.tagchip` list; comps show per-match lines (`.crow-match`: outcome pill + score + optional submission), a cardio line, the two note blocks, and — when tagged — the same `.tagchip` list as sessions. `.srow--open` swaps the card border to `accent-800`. Expansion state lives in the parent (`expandedId` in `src/App.tsx` — single-open accordion; Home rows navigate to Sessions and open there instead).
 
 ### FocusCard — `src/components/FocusCard.tsx`
 
@@ -129,7 +130,9 @@ The `TABS` array is the registration point: `{ id: Tab; label; icon?: Icon }`. *
 
 **FOR vs AGAINST coloring** — anything "mine/positive" is `accent-300`, anything "theirs/negative" is neutral. Instances that must stay consistent: `.subs-for` vs `.subs-against` (Home stat card), `.srow-stat-n--for` (session panel), `.subs-half-label--for/--against` (Log steppers), `.match-half-label--me/--them` (match points), `.crow-oc--win` (accent-300) vs `--loss` (neutral-500) vs `--draw` (neutral-400). Any new mine/theirs or win/loss surface uses exactly these two colors.
 
-**dur-row / dur-cap** — a centered row of `dur`-variant chips with a single 11px neutral-600 caption below (`.dur-cap`). Used for round length ("round length"), cardio ("cardio — 1 fine · 5 gassed"), and the When picker's live today/yesterday caption. This is the house pattern for "small option row + explanatory caption".
+**dur-row / dur-cap** — a centered row of `dur`-variant chips with a single 11px neutral-600 caption below (`.dur-cap`). Used for round length ("round length"), cardio ("cardio — 1 fine · 5 gassed"), the comp form's podium placement chips ("podium" — None/Bronze/Silver/Gold, single-select), and the When picker's live today/yesterday caption. This is the house pattern for "small option row + explanatory caption".
+
+**Flame streak rows** — `.frow` (Progress "Streaks" section): a `card` row of Phosphor Flame (size 16) + `.frow-n` ("×{weeks}", 500-weight) + 13px neutral-300 `.frow-label`. Hot rows fill the flame (`weight="fill"`, `accent-300` — an icon as text mark, within accent rule 2); a zero-week row adds `.frow--cold` (regular-weight flame in `neutral-600`, count in `neutral-500`). One row per streak variant from `src/stats.ts` (see [stats.md](stats.md)); rows stack inside `.mrows` with an 8px `.frow + .frow` gap.
 
 **The `.input` family** — `.input` is the base (bg `--color-bg`, neutral-700 border, accent caret, accent border on focus, and the mandatory `font-family: inherit`). Modifiers: `.input--sm` (compact, match submission field), `.input--area` (textarea: `resize: none`, min-height 64px), `.input--time` (native `type="time"`: auto width and **`color-scheme: dark`**, without which the browser renders a light-themed time control — keep this on any future native date/time input). `.chip-input` is the separate chip-shaped text input for inline tag creation.
 

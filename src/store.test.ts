@@ -35,6 +35,8 @@ const comp = {
   title: 'Regional Open',
   gi: true,
   cardio: 4,
+  placement: 'bronze',
+  tags: ['De La Riva'],
   workedWell: 'Grips',
   didntWork: 'Cardio',
   matches: [{ outcome: 'win', myPoints: 4, theirPoints: 2, submission: '' }],
@@ -58,6 +60,19 @@ describe('load', () => {
     expect(load().competitions).toEqual([comp])
   })
 
+  it('backfills placement and tags on comps from before the goals feature', () => {
+    const legacy = { ...comp } as Record<string, unknown>
+    delete legacy.placement
+    delete legacy.tags
+    stubStorage(JSON.stringify({ competitions: [legacy] }))
+    const c = load().competitions[0]
+    expect(c.placement).toBe('none')
+    expect(c.tags).toEqual([])
+    stubStorage(JSON.stringify({ competitions: [{ ...comp, placement: 'junk', tags: 'junk' }] }))
+    expect(load().competitions[0].placement).toBe('none')
+    expect(load().competitions[0].tags).toEqual([])
+  })
+
   it('still backfills session updatedAt from createdAt (pre-sync blobs)', () => {
     stubStorage(JSON.stringify({ sessions: [session] }))
     expect(load().sessions[0].updatedAt).toBe(100)
@@ -68,6 +83,13 @@ describe('load', () => {
     expect(load().sessions[0].time).toBeNull()
     stubStorage(JSON.stringify({ sessions: [{ ...session, time: '19:30' }] }))
     expect(load().sessions[0].time).toBe('19:30')
+  })
+
+  it('clamps a poisoned weeklyGoal from the blob', () => {
+    stubStorage(JSON.stringify({ settings: { weeklyGoal: 0, showMilestones: true } }))
+    expect(load().settings.weeklyGoal).toBe(2)
+    stubStorage(JSON.stringify({ settings: { weeklyGoal: 3 } }))
+    expect(load().settings.weeklyGoal).toBe(3)
   })
 
   it('returns fresh empty data when storage is empty or unparseable', () => {

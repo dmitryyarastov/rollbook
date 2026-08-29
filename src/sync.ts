@@ -10,7 +10,7 @@
  */
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
 import { emptyData } from './store'
-import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, RoundMin, Session, Settings } from './types'
+import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, Placement, RoundMin, Session, Settings } from './types'
 
 export type SyncStatus = 'disabled' | 'syncing' | 'synced' | 'offline' | 'error'
 
@@ -106,9 +106,11 @@ interface CompetitionRow {
   title: string
   gi: boolean
   cardio: number
+  placement: string
   worked_well: string
   didnt_work: string
   matches: CompMatch[] // serialized into the jsonb column
+  tags: string[]
   created_at: string
   updated_at: string
 }
@@ -121,15 +123,18 @@ export function toCompRow(c: Competition): CompetitionRow {
     title: c.title,
     gi: c.gi,
     cardio: c.cardio,
+    placement: c.placement,
     worked_well: c.workedWell,
     didnt_work: c.didntWork,
     matches: c.matches,
+    tags: c.tags,
     created_at: new Date(c.createdAt).toISOString(),
     updated_at: new Date(c.updatedAt).toISOString(),
   }
 }
 
 const CARDIO_RATINGS: readonly number[] = [0, 1, 2, 3, 4, 5]
+const PLACEMENTS: readonly string[] = ['none', 'bronze', 'silver', 'gold']
 const OUTCOMES: readonly string[] = ['win', 'loss', 'draw']
 /** The jsonb column has no per-field CHECKs — these client caps are the only bounds. */
 const MAX_MATCHES = 50
@@ -170,9 +175,11 @@ export function fromCompRow(r: unknown): Competition | null {
     title: typeof o.title === 'string' ? o.title : 'Competition',
     gi: o.gi === true,
     cardio: (CARDIO_RATINGS.includes(Number(o.cardio)) ? Number(o.cardio) : 0) as CardioRating,
+    placement: (typeof o.placement === 'string' && PLACEMENTS.includes(o.placement) ? o.placement : 'none') as Placement,
     workedWell: typeof o.worked_well === 'string' ? o.worked_well : '',
     didntWork: typeof o.didnt_work === 'string' ? o.didnt_work : '',
     matches: sanitizeMatches(o.matches),
+    tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string') : [],
   }
 }
 
@@ -195,7 +202,12 @@ export function fromStateRow(r: unknown): RemoteState | null {
         ? s.tagList.filter((t): t is string => typeof t === 'string')
         : base.tagList,
     settings: {
-      weeklyGoal: typeof settings.weeklyGoal === 'number' ? settings.weeklyGoal : base.settings.weeklyGoal,
+      // Clamped to a positive integer: a tampered 0/negative goal would make
+      // every empty week "qualify" and stall the streak walks.
+      weeklyGoal:
+        typeof settings.weeklyGoal === 'number' && Number.isFinite(settings.weeklyGoal) && settings.weeklyGoal >= 1
+          ? Math.round(settings.weeklyGoal)
+          : base.settings.weeklyGoal,
       showMilestones:
         typeof settings.showMilestones === 'boolean' ? settings.showMilestones : base.settings.showMilestones,
     },

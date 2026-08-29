@@ -57,9 +57,11 @@ save real-looking test entries against the live backend.
    are banned for calendar math. Weeks start Monday.
 2. **Stats are pure and clock-free.** No function in `src/stats.ts` may read
    the clock — anything date-relative takes `todayIso` explicitly. Every
-   aggregate takes `Session[]` only (`historyFeed`, the render-only history
-   interleave, is the sole competition-aware export) — competitions are
-   history-only and must never influence streak/hours/rounds/subs.
+   training aggregate takes `Session[]` only; the deliberate
+   competition-aware exports are `historyFeed` (the render-only history
+   interleave) and the goal milestones `medalMilestone`/`openGuardMilestone`
+   (via `milestones`), which read competition placement/tags as goal
+   evidence — competitions must never influence streak/hours/rounds/subs.
 3. **Sessions and competitions are append-only per id.** That is the only
    reason the blind full-table upsert push is safe. An edit or delete
    feature requires pull-before-every-push first (see docs/sync.md).
@@ -72,7 +74,8 @@ save real-looking test entries against the live backend.
    the focus/tagList/settings blob (`0` = never touched, gates its push).
 6. **Whitelists are triple-declared** — TS union (`types.ts`), pull
    sanitizer (`sync.ts`), SQL check (`supabase-schema.sql`) — and must stay
-   in lockstep: `RoundMin`, `CardioRating`, the session `time` HH:MM regex.
+   in lockstep: `RoundMin`, `CardioRating`, the competition `Placement`, the
+   session `time` HH:MM regex.
 7. **Design is law** (see docs/design-system.md): Inter 400/500 only; accent
    `#9184d9` only as lines/borders/glows/text marks, never a large fill;
    outlined buttons; component CSS appended to `src/app.css` as ordered

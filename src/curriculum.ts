@@ -160,6 +160,30 @@ const TAG_GROUP: Record<string, CurriculumGroupId> = {
   'leg entanglements': 'legs',
 }
 
+/**
+ * The open-guard family — the explicit whitelist behind the "used open guard
+ * in competition" milestone (closed guard and half guard deliberately
+ * excluded; same no-heuristics policy as TAG_GROUP).
+ */
+const OPEN_GUARD_TAGS = new Set([
+  'open guard',
+  'de la riva',
+  'dlr',
+  'dlr x',
+  'spider',
+  'spider guard',
+  'lasso',
+  'butterfly',
+  'butterfly guard',
+  'x-guard',
+  'x guard',
+  'deep half',
+])
+
+export function isOpenGuardTag(tag: string): boolean {
+  return OPEN_GUARD_TAGS.has(tag.trim().toLowerCase())
+}
+
 export function groupOfTag(tag: string): CurriculumGroupId {
   return TAG_GROUP[tag.trim().toLowerCase()] ?? 'other'
 }

@@ -52,13 +52,13 @@ describe('demo seed (through the real stats functions)', () => {
     expect(volume12w(sessions, TODAY)).toEqual([12, 15, 10, 18, 14, 9, 16, 20, 13, 17, 15, 18])
   })
 
-  it('lands the milestone trio like the handoff', () => {
-    const [quarter, tenWeek, fiveHundred] = milestones(sessions, 2, TODAY)
-    expect(quarter.achieved).toBe(true)
-    expect(quarter.sub).toMatch(/^Hit (May|Jun)/)
-    expect(tenWeek).toEqual({ achieved: true, title: '10-week streak', sub: 'Hit Jul 27' })
-    expect(fiveHundred.achieved).toBe(false)
-    expect(fiveHundred.sub).toMatch(/on pace for (September|October|November)$/)
+  it('lands the milestone trio: AJP pending, open guard shown off, year target crossed', () => {
+    const [medal, openGuard, year] = milestones(sessions, data.competitions, TODAY)
+    expect(medal).toEqual({ achieved: false, title: 'Medal at AJP World Pro Ams', sub: 'No AJP podium yet' })
+    expect(openGuard.achieved).toBe(true) // Regional Open is tagged De La Riva
+    expect(openGuard.sub).toMatch(/^De La Riva at Regional Open/)
+    expect(year.achieved).toBe(true) // demo volume crosses 250 mid-year
+    expect(year.title).toBe('250 rounds this year')
   })
 
   it('has a plausible year volume for early August', () => {

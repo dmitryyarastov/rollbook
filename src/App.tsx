@@ -29,7 +29,7 @@ function useTodayIso(): string {
 }
 
 const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5, gi: true, tags: [], when: null }
-const EMPTY_COMP_FORM: CompForm = { name: '', gi: true, cardio: 0, workedWell: '', didntWork: '', matches: [] }
+const EMPTY_COMP_FORM: CompForm = { name: '', gi: true, cardio: 0, placement: 'none', workedWell: '', didntWork: '', matches: [], tags: [] }
 
 export default function App() {
   const [data, update] = useAppData()
@@ -127,9 +127,11 @@ export default function App() {
       title: compForm.name.trim() || 'Competition',
       gi: compForm.gi,
       cardio: compForm.cardio,
+      placement: compForm.placement,
       workedWell: compForm.workedWell.trim(),
       didntWork: compForm.didntWork.trim(),
       matches: compForm.matches.map((m) => ({ ...m, submission: m.submission.trim() })),
+      tags: compForm.tags,
     }
     update((d) => ({ ...d, competitions: [...d.competitions, comp] }))
     setCompForm((f) => ({ ...EMPTY_COMP_FORM, gi: f.gi }))

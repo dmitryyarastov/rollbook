@@ -3,13 +3,16 @@ import type { Competition, Session } from './types'
 import {
   focusProgress,
   formatHours,
+  focusStreak,
+  giNoGiStreak,
   historyFeed,
   last30d,
-  quarterMilestone,
+  medalMilestone,
+  milestones,
+  openGuardMilestone,
   withSessionTags,
   sortByDateDesc,
   streak,
-  streakMilestone,
   subs30d,
   volume12w,
   weekSummary,
@@ -49,9 +52,11 @@ function mkComp(date: string, extra: Partial<Competition> = {}): Competition {
     title: 'Competition',
     gi: true,
     cardio: 3,
+    placement: 'none',
     workedWell: '',
     didntWork: '',
     matches: [],
+    tags: [],
     ...extra,
   }
 }
@@ -144,61 +149,107 @@ describe('volume and year totals', () => {
   })
 })
 
-describe('milestones', () => {
-  it('quarter: crossing date of the achieving quarter', () => {
+describe('weekly streak variants', () => {
+  it('gi + no-gi: counts weeks with at least one of each', () => {
     const s = [
-      mk('2026-04-10', { rolls: 60 }),
-      mk('2026-05-14', { rolls: 45 }), // crosses 100 in Q2
-      mk('2026-07-20', { rolls: 10 }),
+      mk('2026-07-27', { gi: true }), // current week: both
+      mk('2026-07-28', { gi: false }),
+      mk('2026-07-20', { gi: true }), // last week: both
+      mk('2026-07-24', { gi: false }),
+      mk('2026-07-13', { gi: true }), // two weeks back: gi only — breaks
+      mk('2026-07-14', { gi: true }),
     ]
-    expect(quarterMilestone(s, TODAY)).toEqual({ achieved: true, title: '100 rounds in a quarter', sub: 'Hit May 14' })
+    expect(giNoGiStreak(s, TODAY)).toEqual({ weeks: 2, sinceIso: '2026-07-20' })
   })
 
-  it('quarter: in progress shows current-quarter count', () => {
-    const s = [mk('2026-07-20', { rolls: 40 }), mk('2026-06-30', { rolls: 30 })]
-    expect(quarterMilestone(s, TODAY).sub).toBe('40 / 100 this quarter')
+  it('gi + no-gi: an unfinished current week without both does not break the streak', () => {
+    const s = [
+      mk('2026-08-01', { gi: true }), // current week: gi only so far
+      mk('2026-07-20', { gi: true }),
+      mk('2026-07-21', { gi: false }),
+    ]
+    expect(giNoGiStreak(s, TODAY).weeks).toBe(1)
   })
 
-  it('streak milestone: only completed weeks count, dated the Monday after week 10', () => {
-    const sessions: Session[] = []
-    // Build 10 completed goal-met weeks ending Sun 2026-07-26 (weeks starting May 18 … Jul 20)
-    for (let i = 0; i < 10; i++) {
-      const base = new Date(2026, 4, 18 + i * 7)
-      const mondayIso = `2026-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`
-      sessions.push(mk(mondayIso), mk(mondayIso))
-    }
-    const m = streakMilestone(sessions, 2, TODAY)
-    expect(m).toEqual({ achieved: true, title: '10-week streak', sub: 'Hit Jul 27' })
+  it('focus: counts weeks with at least one focus-tagged session; empty tag = 0', () => {
+    const s = [
+      mk('2026-07-28', { tags: ['Guard retention'] }),
+      mk('2026-07-22', { tags: ['Guard retention', 'Kimura'] }),
+      mk('2026-07-15', { tags: ['Kimura'] }), // untagged week breaks
+    ]
+    expect(focusStreak(s, 'Guard retention', TODAY)).toEqual({ weeks: 2, sinceIso: '2026-07-20' })
+    expect(focusStreak(s, '', TODAY)).toEqual({ weeks: 0, sinceIso: null })
+  })
+})
+
+describe('weeklyStreak bound', () => {
+  it('a predicate that accepts empty weeks terminates at the earliest logged week', () => {
+    // goal 0 makes every week qualify — the walk must stop, not march forever
+    expect(streak([mk('2026-07-28')], 0, TODAY)).toEqual({ weeks: 1, sinceIso: '2026-07-27' })
+    expect(streak([mk('2026-07-07')], 0, TODAY)).toEqual({ weeks: 4, sinceIso: '2026-07-06' })
+    expect(streak([], 0, TODAY)).toEqual({ weeks: 1, sinceIso: '2026-07-27' })
+  })
+})
+
+describe('milestones', () => {
+  it('medal: earliest AJP-titled comp with a placement achieves it', () => {
+    const comps = [
+      mkComp('2026-09-12', { title: 'Regional Open', placement: 'gold' }), // not AJP — no effect
+      mkComp('2026-11-20', { title: 'AJP World Pro Ams', placement: 'silver' }),
+      mkComp('2026-12-05', { title: 'AJP Grand Slam', placement: 'bronze' }),
+    ]
+    expect(medalMilestone(comps)).toEqual({
+      achieved: true,
+      title: 'Medal at AJP World Pro Ams',
+      sub: 'Silver at AJP World Pro Ams — Nov 20',
+    })
   })
 
-  it('streak milestone: nine completed weeks plus a qualifying current week is not achieved', () => {
-    const sessions: Session[] = []
-    for (let i = 0; i < 9; i++) {
-      const base = new Date(2026, 4, 25 + i * 7)
-      const mondayIso = `2026-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`
-      sessions.push(mk(mondayIso), mk(mondayIso))
-    }
-    sessions.push(mk('2026-07-27'), mk('2026-07-28')) // current week qualifies
-    const m = streakMilestone(sessions, 2, TODAY)
-    expect(m.achieved).toBe(false)
-    expect(m.sub).toBe('9 / 10 weeks') // completed weeks only — current week is still open
+  it('medal: matches AJP case-insensitively; no placement or no AJP comp stays pending', () => {
+    expect(medalMilestone([mkComp('2026-11-20', { title: 'ajp tour uae national', placement: 'bronze' })]).achieved).toBe(true)
+    expect(medalMilestone([mkComp('2026-11-20', { title: 'AJP World Pro', placement: 'none' })]).achieved).toBe(false)
+    expect(medalMilestone([mkComp('2026-09-12', { title: 'Regional Open', placement: 'gold' })]).achieved).toBe(false)
+    expect(medalMilestone([]).sub).toBe('No AJP podium yet')
+  })
+
+  it('open guard: earliest comp with an open-guard-family tag achieves it', () => {
+    const comps = [
+      mkComp('2026-09-12', { title: 'Regional Open', tags: ['Closed Guard', 'Half guard'] }), // not open guard
+      mkComp('2026-10-03', { title: 'Local Cup', tags: ['DLR X'] }),
+      mkComp('2026-11-20', { title: 'AJP World Pro', tags: ['Open guard'] }),
+    ]
+    expect(openGuardMilestone(comps)).toEqual({
+      achieved: true,
+      title: 'Open guard in competition',
+      sub: 'DLR X at Local Cup — Oct 3',
+    })
+  })
+
+  it('open guard: closed and half guard do not qualify; empty stays pending', () => {
+    expect(openGuardMilestone([mkComp('2026-09-12', { tags: ['Closed Guard'] })]).achieved).toBe(false)
+    expect(openGuardMilestone([]).sub).toBe('Play it, then tag it on the comp entry')
   })
 
   it('year: achieved with crossing date', () => {
-    const s = [mk('2026-02-01', { rolls: 300 }), mk('2026-03-05', { rolls: 250 })]
-    expect(yearMilestone(s, TODAY)).toEqual({ achieved: true, title: '500 rounds this year', sub: 'Hit Mar 5' })
+    const s = [mk('2026-02-01', { rolls: 150 }), mk('2026-03-05', { rolls: 120 })]
+    expect(yearMilestone(s, TODAY)).toEqual({ achieved: true, title: '250 rounds this year', sub: 'Hit Mar 5' })
   })
 
   it('year: shows pace month when projection lands inside the year', () => {
-    const s = [mk('2026-06-01', { rolls: 360 })]
+    const s = [mk('2026-06-01', { rolls: 180 })]
     const m = yearMilestone(s, TODAY)
     expect(m.achieved).toBe(false)
-    expect(m.sub).toBe('360 / 500 — on pace for October') // ceil(214*500/360) = day 298 = Oct 25
+    expect(m.sub).toBe('180 / 250 — on pace for October') // ceil(214*250/180) = day 298 = Oct 25
   })
 
   it('year: no pace clause when off pace or empty', () => {
-    expect(yearMilestone([], TODAY).sub).toBe('0 / 500')
-    expect(yearMilestone([mk('2026-08-01', { rolls: 10 })], TODAY).sub).toBe('10 / 500')
+    expect(yearMilestone([], TODAY).sub).toBe('0 / 250')
+    expect(yearMilestone([mk('2026-08-01', { rolls: 5 })], TODAY).sub).toBe('5 / 250')
+  })
+
+  it('milestones returns the goal pair plus the year target', () => {
+    const titles = milestones([], [], TODAY).map((m) => m.title)
+    expect(titles).toEqual(['Medal at AJP World Pro Ams', 'Open guard in competition', '250 rounds this year'])
   })
 })
 

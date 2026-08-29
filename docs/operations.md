@@ -37,6 +37,7 @@ boundaries are the "what do I paste on an existing project" units. Current secti
 | Base (top of file) | `sessions`, `app_state` tables, index, RLS enable, anon policies, `revoke delete` | none — base runs once on a fresh project only |
 | Competitions (added 2026-08) | `competitions` table, index, RLS, policies, `revoke delete` | `create table if not exists`, `create index if not exists`, `drop policy if exists` before each `create policy` (Postgres has no `create policy if not exists`) |
 | Session start time (added 2026-08) | `sessions.time` column with HH:MM check | `add column if not exists` |
+| Competition placement + technique tags (added 2026-08) | `competitions.placement` column (default `'none'`, medal-value check) and `competitions.tags` `text[]` column | `add column if not exists` |
 
 Applying on an existing project: paste and run **just the new section** in the SQL
 editor. Applying on a fresh project: run the whole file top to bottom.
@@ -52,8 +53,10 @@ The two failure modes for schema drift are deliberately asymmetric (see `pullAll
   addendum. This is why a new *entity* can ship code-first.
 - **Missing column on a pushed table → loud failure.** PostgREST answers **400**
   (`PGRST204`, "column not found in schema cache") when a pushed row names an unknown
-  column, and `pushAll` throws — session sync goes to `error` status for every device
-  running that build. This strictness is deliberate. **The `ALTER TABLE … ADD COLUMN`
+  column, and `pushAll` throws — sync goes to `error` status for every device
+  running that build. This applies to competitions too: their 404 tolerance covers only
+  the whole table missing, so a comp push missing `placement`/`tags` 400s the same way.
+  This strictness is deliberate. **The `ALTER TABLE … ADD COLUMN`
   must be run in the SQL editor before deploying any build whose `toRow` includes the
   new column.** Order of operations for a new pushed column: append the addendum →
   owner runs it → confirm via curl (below) → then push to `main`.
@@ -63,7 +66,9 @@ declaration (see [sync.md](sync.md) and CLAUDE.md invariant 6): the TS union in
 `src/types.ts`, the pull sanitizer in `src/sync.ts`, and the SQL `check` in
 `supabase-schema.sql` must accept/reject identically — e.g. the `time` HH:MM regex in
 `fromRow` and the SQL check on `sessions.time` match the same strings (spelled with
-`\d` in TS, `[0-9]` in SQL).
+`\d` in TS, `[0-9]` in SQL), and the competition `Placement` union / `PLACEMENTS`
+whitelist / `placement in ('none','bronze','silver','gold')` check name the same four
+values.
 
 ## RLS model and the no-DELETE guarantee
 

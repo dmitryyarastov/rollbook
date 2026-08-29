@@ -19,6 +19,7 @@ export interface Session {
 }
 
 export type CompOutcome = 'win' | 'loss' | 'draw'
+export type Placement = 'none' | 'bronze' | 'silver' | 'gold'
 /** 0 = unrated; 1 = fine … 5 = gassed. */
 export type CardioRating = 0 | 1 | 2 | 3 | 4 | 5
 
@@ -42,9 +43,13 @@ export interface Competition {
   title: string
   gi: boolean
   cardio: CardioRating
+  /** Podium finish for the event; 'none' = no medal (the default). */
+  placement: Placement
   workedWell: string
   didntWork: string
   matches: CompMatch[]
+  /** Techniques worked during the event — same tag vocabulary as sessions. */
+  tags: string[]
 }
 
 export interface FocusGoal {
@@ -88,7 +93,9 @@ export interface CompForm {
   name: string
   gi: boolean
   cardio: CardioRating
+  placement: Placement
   workedWell: string
   didntWork: string
   matches: CompMatch[]
+  tags: string[]
 }

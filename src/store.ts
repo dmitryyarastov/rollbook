@@ -45,11 +45,26 @@ export function load(): AppData {
         updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
         time: typeof s.time === 'string' ? s.time : null,
       })),
-      // Blobs from before the competitions feature simply gain the empty array.
-      competitions: Array.isArray(parsed.competitions) ? parsed.competitions : base.competitions,
+      // Blobs from before the competitions feature simply gain the empty array;
+      // pre-placement/tags comps gain the defaults.
+      competitions: (Array.isArray(parsed.competitions) ? parsed.competitions : base.competitions).map((c) => ({
+        ...c,
+        placement: c.placement === 'bronze' || c.placement === 'silver' || c.placement === 'gold' ? c.placement : 'none',
+        tags: Array.isArray(c.tags) ? c.tags : [],
+      })),
       tagList: Array.isArray(parsed.tagList) && parsed.tagList.length > 0 ? parsed.tagList : base.tagList,
       focus: { ...base.focus, ...parsed.focus },
-      settings: { ...base.settings, ...parsed.settings },
+      settings: {
+        ...base.settings,
+        ...parsed.settings,
+        // Same clamp as the pull sanitizer — a poisoned goal must not persist.
+        weeklyGoal:
+          typeof parsed.settings?.weeklyGoal === 'number' &&
+          Number.isFinite(parsed.settings.weeklyGoal) &&
+          parsed.settings.weeklyGoal >= 1
+            ? Math.round(parsed.settings.weeklyGoal)
+            : base.settings.weeklyGoal,
+      },
       stateUpdatedAt: typeof parsed.stateUpdatedAt === 'number' ? parsed.stateUpdatedAt : 0,
     }
   } catch {

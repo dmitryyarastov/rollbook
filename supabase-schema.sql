@@ -93,3 +93,12 @@ revoke delete on public.competitions from anon;
 
 alter table public.sessions add column if not exists "time" text
   check ("time" is null or "time" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+-- ── Competition placement + technique tags (added 2026-08) ───────────────────
+-- Podium finish per event and the techniques worked during it — evidence for
+-- the goal milestones (AJP medal, open guard in competition). Idempotent;
+-- run once. Apply BEFORE deploying the build that pushes these columns.
+
+alter table public.competitions add column if not exists placement text not null default 'none'
+  check (placement in ('none', 'bronze', 'silver', 'gold'));
+alter table public.competitions add column if not exists tags text[] not null default '{}';

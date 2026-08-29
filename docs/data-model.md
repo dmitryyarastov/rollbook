@@ -8,7 +8,7 @@ All persistent state is one `AppData` object (src/types.ts — `AppData`) held i
 - **Calendar dates are local `yyyy-mm-dd` strings.** They are produced by src/dates.ts — `toIso` (local getters) and parsed by `parseIso`. `toISOString()` / any UTC API is banned for calendar dates: an evening session must land on that local day. Weeks are Monday-start (src/dates.ts — `mondayOf`).
 - **Timestamps (`createdAt`/`updatedAt`) are epoch-ms numbers, app-authoritative.** The DB has no `now()` defaults or triggers (supabase-schema.sql) — a DB trigger would corrupt LWW for offline-delayed pushes. `updatedAt` drives last-write-wins merges in src/sync.ts — `mergeById`.
 - **`demo-` prefixed ids never sync in either direction** (src/sync.ts — `isPushable`, also applied to remote rows inside `mergeById`).
-- **Whitelisted value sets are triple-declared**: TS union (src/types.ts) + pull-sanitizer whitelist (src/sync.ts) + SQL check constraint (supabase-schema.sql) — true of `RoundMin` and `CardioRating`. `CompOutcome` has no SQL leg (it lives in the jsonb `matches` column, which has no per-field checks) and the `time` format has no TS union (regex in src/sync.ts + SQL only). All declared legs must accept/reject identically.
+- **Whitelisted value sets are triple-declared**: TS union (src/types.ts) + pull-sanitizer whitelist (src/sync.ts) + SQL check constraint (supabase-schema.sql) — true of `RoundMin`, `CardioRating`, and `Placement`. `CompOutcome` has no SQL leg (it lives in the jsonb `matches` column, which has no per-field checks) and the `time` format has no TS union (regex in src/sync.ts + SQL only). All declared legs must accept/reject identically.
 
 ## Persisted types
 
@@ -36,11 +36,11 @@ One training session. Created only by `saveSession` in src/App.tsx; never mutate
 
 A competition entry — append-only per id, same rule as `Session`. Created only by `saveComp` in src/App.tsx. Matches live as a `CompMatch[]` **on the row** (jsonb column remotely, not a child table): the anon role cannot DELETE, so child rows could never be reconciled — the whole competition is the atomic LWW unit.
 
-`Competition` fields: `id`, `createdAt`, `updatedAt` as in `Session`; `date` is the local save day (`toIso(now)` — no time picker, no `resolveWhen` shift). `title` is resolved at save time (trimmed event name or the default `'Competition'` — the default is also the pull-sanitizer fallback in src/sync.ts — `fromCompRow`). `gi: boolean`; `cardio: CardioRating` (`0..5`, `0` = unrated, `5` = gassed); `workedWell` / `didntWork` free text, trimmed at save; `matches: CompMatch[]`.
+`Competition` fields: `id`, `createdAt`, `updatedAt` as in `Session`; `date` is the local save day (`toIso(now)` — no time picker, no `resolveWhen` shift). `title` is resolved at save time (trimmed event name or the default `'Competition'` — the default is also the pull-sanitizer fallback in src/sync.ts — `fromCompRow`). `gi: boolean`; `cardio: CardioRating` (`0..5`, `0` = unrated, `5` = gassed); `placement: Placement` (`'none' | 'bronze' | 'silver' | 'gold'`, `'none'` = no medal — the default; triple-declared, see coupling table); `workedWell` / `didntWork` free text, trimmed at save; `matches: CompMatch[]`; `tags: string[]` — techniques worked during the event, same tag vocabulary as sessions (a real `text[]` column remotely, filtered to string members on pull — unlike the jsonb `matches`). `placement` and `tags` are the evidence the competition goal milestones read (src/stats.ts — `medalMilestone` / `openGuardMilestone`, see [stats.md](stats.md)).
 
 `CompMatch`: `outcome: CompOutcome` (`'win' | 'loss' | 'draw'`), `myPoints` / `theirPoints: number`, `submission: string` — non-empty means the match ended by that submission (mine on a win, theirs on a loss). The jsonb column has no per-field SQL checks; the client-side caps in src/sync.ts — `sanitizeMatches` (`MAX_MATCHES = 50`, `MAX_POINTS = 1000`, outcome whitelist) are the only bounds on pulled data.
 
-**Competitions are history-only.** Every derived-stat function takes `Session[]` only (see [stats.md](stats.md); the one src/stats.ts function that accepts `Competition[]`, `historyFeed`, is display-only interleaving for the history list), so competitions cannot affect streak/hours/rounds even by accident — this is type-level enforcement, keep it.
+**Competitions cannot move training aggregates.** Every aggregate stat takes `Session[]` only (see [stats.md](stats.md)); the src/stats.ts exports that accept `Competition[]` are deliberate and bounded — `historyFeed` (display-only interleaving for the history list) and the goal milestones `medalMilestone` / `openGuardMilestone` (via `milestones`), which read `placement`/`tags` as goal evidence — so competitions cannot affect streak/hours/rounds/subs even by accident. This is type-level enforcement, keep it.
 
 ### `AppData`
 
@@ -55,7 +55,7 @@ A competition entry — append-only per id, same rule as `Session`. Created only
 
 ### Ephemeral (never persisted)
 
-`Tab` (`'dash' | 'history' | 'log' | 'tech' | 'progress'`), `GiFilter` (`'All' | 'Gi' | 'No-Gi'`), `LogMode` (`'training' | 'comp'`), `LogForm`, `CompForm` — all React state in src/App.tsx. `LogForm` defaults are `EMPTY_FORM` in src/App.tsx (`roundMin: 5`, `gi: true`, `when: null`); `CompForm` defaults are `EMPTY_COMP_FORM` (`cardio: 0`, `gi: true`). After a comp save, only `gi` survives the reset (sticky preference).
+`Tab` (`'dash' | 'history' | 'log' | 'tech' | 'progress'`), `GiFilter` (`'All' | 'Gi' | 'No-Gi'`), `LogMode` (`'training' | 'comp'`), `LogForm`, `CompForm` — all React state in src/App.tsx. `LogForm` defaults are `EMPTY_FORM` in src/App.tsx (`roundMin: 5`, `gi: true`, `when: null`); `CompForm` defaults are `EMPTY_COMP_FORM` (`cardio: 0`, `gi: true`, `placement: 'none'`, empty `tags`). After a comp save, only `gi` survives the reset (sticky preference).
 
 ## localStorage blob (`rollbook:v1`)
 
@@ -71,7 +71,7 @@ There are no versioned migrations and no version bump planned — `load()` does 
 - Missing/malformed top-level keys → per-key defaults (`Array.isArray` guards; `focus`/`settings` are spread-merged over the defaults so *new sub-fields added later* auto-heal; an empty `tagList` is replaced by `DEFAULT_TAGS`).
 - Unknown keys in the stored blob are **dropped** — `load()` builds a fresh object literal, it does not spread `parsed`.
 - Per-session backfills: pre-sync rows lacking `updatedAt` get `createdAt`; rows lacking `time` (pre-picker) get `null`.
-- `competitions` missing (pre-feature blobs) → empty array.
+- `competitions` missing (pre-feature blobs) → empty array. Per-comp backfills for pre-goals blobs: `placement` kept only when it is a whitelisted medal value (else `'none'`), `tags` kept only when an array (else `[]`).
 
 **Consequence: adding a field to `Session` or `AppData` requires adding its default/backfill in `load()` in the same change**, or existing installs boot with `undefined` in that field. Adding a synced `Session` field additionally requires the SQL addendum + mapper work (see coupling table and [sync.md](sync.md)).
 
@@ -104,9 +104,9 @@ Deterministic seed anchored to the runtime `todayIso`, loaded only via the conso
 Two layers:
 
 1. **Showcase window** — the hardcoded `SHOWCASE` table, week offsets `0..-11` relative to `mondayOf(todayIso)`, reproduces the design handoff's dashboard *through the real stats functions*: week bars M4/W8/F6, an 11-week streak (week −11 holds the single-session streak breaker), a 30-day window of 11 sessions with the focus tag in 7 (64%), subs 9/12, and the prototype's exact 12-week volume chart `[12,15,10,18,14,9,16,20,13,17,15,18]`. Weeks −3..0 are the 30-day showcase; week −4 deliberately stays Mon–Fri so nothing leaks into the 30-day window. Editing `SHOWCASE` numbers breaks those derived readouts — verify against src/stats.ts, not by eye.
-2. **PRNG filler** — weeks −12..−30, `mulberry32` with fixed seed `20260802`, clipped to the current calendar year (`jan1` guard both ends). `LIGHT_WEEKS` inserts sub-2-session weeks at −27/−20/−13 so no accidental ≥10-week streak predates the showcase run. Sized so the 500-round milestone reads "on pace for October" in early August.
+2. **PRNG filler** — weeks −12..−30, `mulberry32` with fixed seed `20260802`, clipped to the current calendar year (`jan1` guard both ends). `LIGHT_WEEKS` inserts sub-2-session weeks at −27/−20/−13 so no accidental long streak predates the showcase run. Volume lands between 300 and 430 rolls by early August — past the 250-round year milestone, which the demo therefore shows as achieved mid-year.
 
-Sessions get ids `demo-0..n` (index after date-sort), `createdAt = updatedAt = ` 18:00 local on their date plus `i` ms (unique, stable ordering), `time: null`. Two showcase competitions get `demo-comp-0/1` (Saturdays 2 and 6 weeks back, same year guard). The seeded `focus` is `{ title: 'Guard retention under pressure', tag: 'Guard retention' }`; `stateUpdatedAt` stays `0` via the `emptyData()` spread, so seeding never pushes app_state.
+Sessions get ids `demo-0..n` (index after date-sort), `createdAt = updatedAt = ` 18:00 local on their date plus `i` ms (unique, stable ordering), `time: null`. Two showcase competitions get `demo-comp-0/1` (Saturdays 2 and 6 weeks back, same year guard); the Regional Open carries `placement: 'bronze'` and tags `De La Riva`/`Sweeps` while the no-gi comp stays `'none'`/untagged, so the demo milestone trio reads AJP pending / open guard achieved (pinned in `src/demo.test.ts`). The seeded `focus` is `{ title: 'Guard retention under pressure', tag: 'Guard retention' }`; `stateUpdatedAt` stays `0` via the `emptyData()` spread, so seeding never pushes app_state.
 
 **Demo data is a local-only plaything**: `isPushable` excludes `demo-` ids from every push, and `mergeById` drops `demo-` ids arriving from remote — a real hand-tampered `demo-99` row was once found in the DB and was invisible in-app because of exactly these layers. Never reuse the `demo-` prefix for real data, and never generate real ids that start with it.
 
@@ -115,9 +115,10 @@ Sessions get ids `demo-0..n` (index after date-sort), `createdAt = updatedAt = `
 | If you change… | You must also change… |
 |---|---|
 | Any `Session` field (add/rename) | src/store.ts — `load()` backfill; src/sync.ts — `toRow` + `fromRow` (with sanitization); supabase-schema.sql idempotent addendum (run **before** deploying — a missing sessions column 400s/PGRST204 and pushes fail strict, unlike the tolerated 404 for a whole missing competitions table); src/demo.ts session mapper; tests. |
-| Any `Competition`/`CompMatch` field | src/store.ts — `load()` (if defaulting needed); src/sync.ts — `toCompRow` + `fromCompRow`/`sanitizeMatches`; supabase-schema.sql; src/demo.ts comp seeds. |
+| Any `Competition`/`CompMatch` field (add/rename) | src/store.ts — `load()` (if defaulting needed); src/sync.ts — `toCompRow` + `fromCompRow`/`sanitizeMatches`; supabase-schema.sql idempotent addendum (a new **column** on the pushed competitions table must be applied **before** deploy — the tolerated 404 covers only the whole table missing, a missing column 400s the comp push); src/demo.ts comp seeds; tests. |
 | `RoundMin` union (src/types.ts) | `ROUND_MINS` whitelist in src/sync.ts; `round_min in (4,5,6,8)` check in supabase-schema.sql; roundMin picker in src/screens/Log.tsx; mat-hours math assumptions in [stats.md](stats.md). |
 | `CardioRating` union | `CARDIO_RATINGS` in src/sync.ts; `cardio between 0 and 5` check in supabase-schema.sql; the cardio control in src/screens/Log.tsx. |
+| `Placement` union | `PLACEMENTS` in src/sync.ts; `placement in ('none','bronze','silver','gold')` check in supabase-schema.sql; the podium chip row in src/screens/Log.tsx; the `PLACEMENT_LABEL` maps in src/components/CompRow.tsx and src/stats.ts; the `load()` backfill whitelist in src/store.ts. |
 | `CompOutcome` union | `OUTCOMES` in src/sync.ts; outcome UI in src/screens/Log.tsx. |
 | The `'HH:MM'` time format | The regex in src/sync.ts — `fromRow` and the SQL `"time" ~ …` check (must accept/reject identically); src/dates.ts — `toHhmm`/`fmtTime`/`resolveWhen`. |
 | `focus`/`tagList`/`settings` shape | src/sync.ts — `fromStateRow` defaults and the `pushAll` app_state payload; `load()`'s spread-merge covers local healing automatically. |

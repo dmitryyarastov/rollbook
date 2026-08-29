@@ -1,6 +1,6 @@
-import { Check, DotsThree } from '@phosphor-icons/react'
+import { Check, DotsThree, Flame } from '@phosphor-icons/react'
 import { fmtShort } from '../dates'
-import { formatHours, milestones, streak, volume12w, yearTotals } from '../stats'
+import { focusStreak, formatHours, giNoGiStreak, milestones, streak, volume12w, yearTotals } from '../stats'
 import type { AppData } from '../types'
 
 interface ProgressProps {
@@ -14,6 +14,14 @@ export function Progress({ data, todayIso }: ProgressProps) {
   const vol = volume12w(data.sessions, todayIso)
   const maxVol = Math.max(...vol, 1)
   const year = yearTotals(data.sessions, todayIso)
+  const flames = [
+    { label: `Training — ${goal}+ sessions / week`, n: st.weeks },
+    { label: 'Gi + No-Gi in the same week', n: giNoGiStreak(data.sessions, todayIso).weeks },
+    {
+      label: data.focus.tag ? `Focus work — ${data.focus.tag}` : 'Focus work — set a focus tag',
+      n: focusStreak(data.sessions, data.focus.tag, todayIso).weeks,
+    },
+  ]
 
   return (
     <div className="screen">
@@ -55,6 +63,19 @@ export function Progress({ data, todayIso }: ProgressProps) {
         </div>
       </section>
 
+      <div className="section-label label-row">Streaks</div>
+      <div className="mrows">
+        {flames.map((f) => (
+          <div key={f.label} className={`card frow${f.n > 0 ? '' : ' frow--cold'}`}>
+            <div className="frow-flame">
+              <Flame size={16} weight={f.n > 0 ? 'fill' : 'regular'} />
+            </div>
+            <div className="frow-n">×{f.n}</div>
+            <div className="frow-label">{f.label}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="stat-row">
         <section className="card stat-card">
           <div className="kicker">Mat hours · year</div>
@@ -76,7 +97,7 @@ export function Progress({ data, todayIso }: ProgressProps) {
         <div>
           <div className="section-label label-row">Milestones</div>
           <div className="mrows">
-            {milestones(data.sessions, goal, todayIso).map((m) => (
+            {milestones(data.sessions, data.competitions, todayIso).map((m) => (
               <div key={m.title} className={`card mrow${m.achieved ? '' : ' mrow--pending'}`}>
                 <div className="mrow-icon">
                   {m.achieved ? <Check size={16} /> : <DotsThree size={16} />}

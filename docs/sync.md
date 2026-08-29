@@ -96,7 +96,7 @@ With no auth, every remote row is attacker-writable, so `pullAll` maps everythin
 | `tags` | array filtered to string members, else `[]` |
 | `time` | string matching `/^([01]\d|2[0-3]):[0-5]\d$/`, else `null` |
 
-`fromCompRow` (competitions): same id/date/timestamp drop rules; `title` defaults to `'Competition'`, `cardio` must be in 0–5 (`CARDIO_RATINGS`) else `0`, `worked_well`/`didnt_work` default `''`, and `matches` goes through `sanitizeMatches`:
+`fromCompRow` (competitions): same id/date/timestamp drop rules; `title` defaults to `'Competition'`, `cardio` must be in 0–5 (`CARDIO_RATINGS`) else `0`, `placement` must be a string in `PLACEMENTS` (`'none' | 'bronze' | 'silver' | 'gold'`) else `'none'`, `worked_well`/`didnt_work` default `''`, `tags` is an array filtered to string members else `[]` (the same rule as session tags — it is a real `text[]` column, not jsonb), and `matches` goes through `sanitizeMatches`:
 
 - non-array → `[]`; list truncated at **`MAX_MATCHES = 50`**;
 - entry with `outcome` not in `['win','loss','draw']` → **entry dropped** (outcome is semantically essential, no sane default);
@@ -116,7 +116,7 @@ The caps matter: `matches` is a jsonb column and `supabase-schema.sql` only chec
 | pull/push `sessions`, `app_state` | any non-ok | throw → `fail()` | strict |
 | any request | > 10 s | `AbortSignal.timeout` rejects → `fail()` | paused Supabase project hangs otherwise |
 
-A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data.
+A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s, so the "Competition placement + technique tags" addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
 
 ## SyncStatus lifecycle
 
@@ -128,7 +128,7 @@ A missing **column** on an existing table is deliberately loud, not tolerated: P
 
 ## Playbook: adding a synced field to sessions
 
-Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; the `time` regex in `fromRow` and the SQL `~` check are the same automaton). Follow all steps; the recent `time` column (`src/types.ts` / `supabase-schema.sql` addendum "Session start time") is the worked example.
+Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; the competition `Placement` union / `PLACEMENTS` / `placement in (…)` check; the `time` regex in `fromRow` and the SQL `~` check are the same automaton). Follow all steps; the recent `time` column (`src/types.ts` / `supabase-schema.sql` addendum "Session start time") is the worked example.
 
 1. **`src/types.ts`** — add the field to `Session` (union type if it's an enum).
 2. **`src/store.ts` — `load`** — default the field for pre-existing localStorage blobs (as `time: typeof s.time === 'string' ? s.time : null` does).
@@ -147,14 +147,14 @@ Model it on competitions end-to-end:
 3. `src/sync.ts` — row interface, `toXRow`/`fromXRow` sanitizer, `mergeXs = mergeById`, wire into `RemotePull`, `pullAll`, `pushAll`, and `mergeAppData` (**extend the bailout condition and spread the new array in both return branches**).
 4. Decide the tolerance class: if the table ships as a schema addendum after the build can already be live, give it the competitions-style 404 tolerance on both pull and push; otherwise strict.
 5. `supabase-schema.sql` addendum: table with CHECKs, index on `(user_id, date)`, RLS enable, drop-then-create anon select/insert/update policies (`with check (user_id = 'dmitrii')`), and `revoke delete … from anon`. No timestamp defaults/triggers.
-6. Stats stay competition-proof by type: every aggregate in `src/stats.ts` takes `Session[]` only (`historyFeed`, the render-only history list, is the sole export that also takes `Competition[]`), so new entities cannot leak into streak/hours/rounds by accident — preserve that (see [stats.md](stats.md)).
+6. Stats stay entity-proof by type: every training aggregate in `src/stats.ts` takes `Session[]` only (the deliberate competition-aware exports are `historyFeed`, the render-only history list, and the goal milestones `medalMilestone`/`openGuardMilestone`), so new entities cannot leak into streak/hours/rounds by accident — preserve that (see [stats.md](stats.md)).
 7. Mirror the full `src/sync.test.ts` battery: round-trip, drop rules, clamp rules, merge semantics, same-reference bailout, both mergeAppData branches, push URL/headers/demo-filter, 404 tolerance.
 
 ## Coupling table
 
 | If you change… | You must also change… |
 |---|---|
-| any whitelisted value set (`RoundMin`, `CardioRating`, `time` format, …) | all three declarations: `src/types.ts` union, `src/sync.ts` sanitizer whitelist/regex, `supabase-schema.sql` CHECK — identically |
+| any whitelisted value set (`RoundMin`, `CardioRating`, `Placement`, `time` format, …) | all three declarations: `src/types.ts` union, `src/sync.ts` sanitizer whitelist/regex, `supabase-schema.sql` CHECK — identically |
 | `Session`/`Competition` shape | `src/store.ts` `load` defaults, `src/sync.ts` row types + `toRow`/`fromRow` (or comp twins), SQL addendum, `src/sync.test.ts` round-trip |
 | add an edit/delete feature for sessions or comps | `pushAll` must become pull-merge-then-push (blind upsert is no longer safe); update the header comment in `src/sync.ts` and this doc |
 | `mergeAppData` | keep the three-term bailout and `competitions` spread in both branches; tests pin both |

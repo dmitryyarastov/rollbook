@@ -8,7 +8,8 @@ optional background sync to a personal Supabase project (see below).
 Five screens behind a bottom tab bar; the raised center tab is the
 ~30-second post-class logging flow, with a Training / Competition toggle —
 competition entries record matches (outcome, points, submission), one
-cardio rating for the event, and what worked / what didn't.
+cardio rating for the event, a podium placement, the techniques worked,
+and what worked / what didn't.
 
 System documentation for contributors (and AI agents) lives in
 [docs/](docs/) — architecture, data model, sync protocol, stats semantics,
@@ -54,9 +55,11 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
 - Schema: [supabase-schema.sql](supabase-schema.sql) (run once in the SQL editor).
   On an existing project, run each delimited addendum section at the bottom
   you haven't run yet — all are idempotent. The "Session start time" ALTER is
-  **required** for builds with the When picker: until it runs, session pushes
-  400 and sync shows an error (data stays safe locally). A missing
-  competitions table is merely tolerated (comps stay local until it exists).
+  **required** for builds with the When picker, and the "Competition placement
+  + technique tags" ALTER for builds with the goals feature: until they run,
+  pushes to that table 400 and sync shows an error (data stays safe locally).
+  A missing competitions table is merely tolerated (comps stay local until it
+  exists) — the tolerance covers the whole table, not a missing column.
   Sessions and competitions land in plain Postgres tables — query them from
   the dashboard or psql:
   `select tag, count(*) from sessions, unnest(tags) tag group by 1;`
@@ -77,19 +80,24 @@ parameterized by a local-date `todayIso` and covered by tests:
   that local day.
 - **Mat hours** = `rounds × round length` (sparring time). The quick-log
   flow doesn't capture class length, so this is deliberately a lower bound.
-- **Streak** = consecutive completed weeks with ≥ `weeklyGoal` sessions,
-  plus the current week once it qualifies (an unfinished week never breaks
-  the streak).
+- **Streaks** = consecutive weeks meeting a rule, plus the current week once
+  it qualifies (an unfinished week never breaks a streak). Three flame rows
+  on Progress: ≥ `weeklyGoal` sessions a week, at least one gi and one no-gi
+  session in the same week, and a session tagged the focus tag each week.
 - **Subs / technique counts / focus progress** use a 30-day window ending
   today. Focus progress = share of those sessions tagged with the focus's
   linked tag.
-- **Milestones**: 100 rounds inside a calendar quarter (dated when crossed),
-  a 10-week streak of completed weeks (dated the Monday after week 10), and
-  500 rounds in the calendar year with a linear pace projection month.
+- **Milestones** are the season goals: a medal at AJP World Pro Ams (the
+  earliest competition titled "AJP…" with a podium placement — non-AJP
+  medals don't count), open guard played in competition (the earliest
+  competition tagged with an open-guard-family tag; closed and half guard
+  deliberately excluded), and 250 rounds in the calendar year with a linear
+  pace projection month.
 
-- **Competitions are history-only**: they interleave with sessions on the
-  Sessions screen and Home's recent list, but never touch streak, mat hours,
-  rounds, or sub counts — every stats function takes `Session[]` only.
+- **Competitions never touch training stats**: they interleave with sessions
+  on the Sessions screen and Home's recent list, and their placement/tags
+  feed the two competition milestones above — but streak, mat hours, rounds,
+  and sub counts come from sessions only.
 
 Settings `weeklyGoal` (default 2) and `showMilestones` are stored under the
 `rollbook:v1` localStorage key; there is deliberately no settings UI (per
@@ -124,8 +132,9 @@ styled in-system:
 - **“+ Add” chip** in the Log technique wrap to append custom tags
   (case-insensitive dedupe; commits on Enter or blur).
 - **Competition logging**: the Log screen's Training / Competition chips
-  switch to a comp form (event name, cardio 1–5, per-match outcome/points/
-  submission editors, what worked / what didn't) — all styled in-system.
+  switch to a comp form (event name, cardio 1–5, podium placement chips,
+  per-match outcome/points/submission editors, a tap-to-tag technique wrap,
+  what worked / what didn't) — all styled in-system.
 - Auto-titles at save time: Morning/Afternoon/Evening class on weekdays,
   Open mat on weekends. Empty states are quiet neutral-500 hints.
 - **"When" picker** on the Log form: Now, the scheduled class slots

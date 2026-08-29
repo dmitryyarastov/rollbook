@@ -1,6 +1,6 @@
 # Curriculum ordering
 
-`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure, display-time concern: it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order.
+`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure module with two jobs: display-time tag ordering — it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order — and the open-guard tag whitelist behind the competition milestone (`isOpenGuardTag`, below).
 
 ## GB curriculum research (why the module looks like this)
 
@@ -43,10 +43,11 @@ These are documented deviations, each pinned by a test in `src/curriculum.test.t
 ## Public API and semantics
 
 - `groupOfTag(tag: string): CurriculumGroupId` — normalized exact lookup, `'other'` fallback.
+- `isOpenGuardTag(tag: string): boolean` — normalized (trim + lowercase) membership test against the module-private `OPEN_GUARD_TAGS` set: the open-guard family (`open guard`, `de la riva`/`dlr`/`dlr x`, `spider`/`spider guard`, `lasso`, `butterfly`/`butterfly guard`, `x-guard`/`x guard`, `deep half`). Closed guard and half guard are **deliberately excluded** — the "open guard in competition" milestone (src/stats.ts — `openGuardMilestone`, see [stats.md](stats.md)) is about playing open guard, not any guard. Same no-heuristics policy as `TAG_GROUP`: exact whitelist membership with spelling variants as separate entries, no substring matching — extend the set, never fuzz the match.
 - `groupTagsByCurriculum(tags: string[]): CurriculumSection[]` — non-empty groups only, in `CURRICULUM_GROUPS` order; **input order preserved within each group**; each section carries `{ group, label, tags }`.
 - `orderTagsByCurriculum(tags: string[]): string[]` — flat version (`flatMap` over sections). Stable within groups; unknown tags last in input order.
 
-Both functions are pure and cheap; callers memoize where they run per-keystroke (see below).
+All of these are pure and cheap; callers memoize the ordering functions where they run per-keystroke (see below).
 
 ## How to add or move a tag mapping
 
@@ -63,6 +64,7 @@ Both functions are pure and cheap; callers memoize where they run per-keystroke 
 | `TAG_GROUP` entries | `REAL_TAGS` ordering fixture and judgment-call tests in `src/curriculum.test.ts` |
 | `DEFAULT_TAGS` in `src/store.ts` (add a tag) | Add a `TAG_GROUP` entry, or the never-`other` test fails |
 | `groupOfTag` normalization | Key format of every `TAG_GROUP` entry (they must stay pre-normalized) |
+| `OPEN_GUARD_TAGS` / `isOpenGuardTag` | `openGuardMilestone` behavior and its tests in `src/stats.test.ts` ([stats.md](stats.md)); entries must stay pre-normalized like `TAG_GROUP` keys |
 
 ## Where ordering is applied (and where it is not)
 
