@@ -93,6 +93,8 @@ With no auth, every remote row is attacker-writable, so `pullAll` maps everythin
 | `gi` | `=== true`, else `false` |
 | `rolls`, `subs_for`, `subs_against` | `count()`: number-coerced, rounded, floored at 0 |
 | `round_min` | must be in `[4, 5, 6, 8]` (`ROUND_MINS`), else `5` |
+| `duration_min` | integer 1–600, else `null` (legacy-compatible) |
+| `intensity` | must be in `[1, 2, 3, 4, 5]` (`SESSION_INTENSITIES`), else `null` |
 | `tags` | array filtered to string members, else `[]` |
 | `time` | string matching `/^([01]\d|2[0-3]):[0-5]\d$/`, else `null` |
 
@@ -116,7 +118,7 @@ The caps matter: `matches` is a jsonb column and `supabase-schema.sql` only chec
 | pull/push `sessions`, `app_state` | any non-ok | throw → `fail()` | strict |
 | any request | > 10 s | `AbortSignal.timeout` rejects → `fail()` | paused Supabase project hangs otherwise |
 
-A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s, so the "Competition placement + technique tags" addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
+A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s. A sessions push missing `duration_min`/`intensity` does the same, so each matching addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
 
 ## SyncStatus lifecycle
 
@@ -128,7 +130,7 @@ A missing **column** on an existing table is deliberately loud, not tolerated: P
 
 ## Playbook: adding a synced field to sessions
 
-Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; the competition `Placement` union / `PLACEMENTS` / `placement in (…)` check; the `time` regex in `fromRow` and the SQL `~` check are the same automaton). Follow all steps; the recent `time` column (`src/types.ts` / `supabase-schema.sql` addendum "Session start time") is the worked example.
+Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; session `SessionIntensity` / `SESSION_INTENSITIES` / `intensity between 1 and 5`; competition `Placement`; and the matching `time` regex). Bounded numeric fields such as `duration_min` must match sanitizer and SQL bounds too. The September 2026 duration/RPE addendum is the latest worked example.
 
 1. **`src/types.ts`** — add the field to `Session` (union type if it's an enum).
 2. **`src/store.ts` — `load`** — default the field for pre-existing localStorage blobs (as `time: typeof s.time === 'string' ? s.time : null` does).

@@ -29,6 +29,8 @@ function mk(over: Partial<Session> = {}): Session {
     subsFor: 1,
     subsAgainst: 2,
     roundMin: 5,
+    durationMin: 60,
+    intensity: 3,
     tags: ['Half guard'],
     time: null,
     ...over,
@@ -99,6 +101,8 @@ describe('row mapping', () => {
       rolls: -5,
       subs_for: 'lots',
       round_min: 7,
+      duration_min: 60.5,
+      intensity: 9,
       tags: 'not-an-array',
       title: 7,
       gi: 'yes',
@@ -107,6 +111,8 @@ describe('row mapping', () => {
     expect(s!.rolls).toBe(0)
     expect(s!.subsFor).toBe(0)
     expect(s!.roundMin).toBe(5)
+    expect(s!.durationMin).toBeNull()
+    expect(s!.intensity).toBeNull()
     expect(s!.tags).toEqual([])
     expect(s!.title).toBe('')
     expect(s!.gi).toBe(false)
@@ -123,6 +129,21 @@ describe('row mapping', () => {
     for (const bad of ['25:00', '7:30', '19:60', '7:30pm', 1930]) {
       expect(fromRow({ ...toRow(mk()), time: bad })!.time).toBeNull()
     }
+  })
+
+  it('round-trips session duration/RPE and nulls missing or out-of-range values', () => {
+    const s = mk({ durationMin: 90, intensity: 5 })
+    expect(fromRow(toRow(s))).toEqual(s)
+    for (const bad of [0, 601, 59.5, 'long']) {
+      expect(fromRow({ ...toRow(s), duration_min: bad })!.durationMin).toBeNull()
+    }
+    for (const bad of [0, 6, 2.5, 'hard']) {
+      expect(fromRow({ ...toRow(s), intensity: bad })!.intensity).toBeNull()
+    }
+    expect(fromRow({ ...toRow(s), duration_min: null, intensity: null })!).toMatchObject({
+      durationMin: null,
+      intensity: null,
+    })
   })
 })
 

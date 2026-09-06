@@ -19,7 +19,8 @@ export function SessionRow({ session: s, expanded = false, onClick }: SessionRow
         <span className="srow-body">
           <span className="srow-title">{s.title}</span>
           <span className="srow-meta">
-            {[fmtShort(s.date), s.time && fmtTime(s.time), s.gi ? 'Gi' : 'No-Gi', `${s.roundMin} min rounds`]
+            {[fmtShort(s.date), s.time && fmtTime(s.time), s.gi ? 'Gi' : 'No-Gi', `${s.roundMin} min rounds`,
+              s.durationMin !== null && `${s.durationMin} min session`, s.intensity !== null && `RPE ${s.intensity}`]
               .filter(Boolean)
               .join(' · ')}
           </span>

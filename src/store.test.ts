@@ -85,6 +85,18 @@ describe('load', () => {
     expect(load().sessions[0].time).toBe('19:30')
   })
 
+  it('backfills session duration and intensity to null for legacy blobs', () => {
+    stubStorage(JSON.stringify({ sessions: [session] }))
+    expect(load().sessions[0].durationMin).toBeNull()
+    expect(load().sessions[0].intensity).toBeNull()
+    stubStorage(JSON.stringify({ sessions: [{ ...session, durationMin: 90, intensity: 4 }] }))
+    expect(load().sessions[0].durationMin).toBe(90)
+    expect(load().sessions[0].intensity).toBe(4)
+    stubStorage(JSON.stringify({ sessions: [{ ...session, durationMin: 0, intensity: 7 }] }))
+    expect(load().sessions[0].durationMin).toBeNull()
+    expect(load().sessions[0].intensity).toBeNull()
+  })
+
   it('clamps a poisoned weeklyGoal from the blob', () => {
     stubStorage(JSON.stringify({ settings: { weeklyGoal: 0, showMilestones: true } }))
     expect(load().settings.weeklyGoal).toBe(2)

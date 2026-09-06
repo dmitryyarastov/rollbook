@@ -74,8 +74,8 @@ save real-looking test entries against the live backend.
    the focus/tagList/settings blob (`0` = never touched, gates its push).
 6. **Whitelists are triple-declared** — TS union (`types.ts`), pull
    sanitizer (`sync.ts`), SQL check (`supabase-schema.sql`) — and must stay
-   in lockstep: `RoundMin`, `CardioRating`, the competition `Placement`, the
-   session `time` HH:MM regex.
+   in lockstep: `RoundMin`, `SessionIntensity`, `CardioRating`, the competition
+   `Placement`, the session `time` HH:MM regex, and the session-duration bounds.
 7. **Design is law** (see docs/design-system.md): Inter 400/500 only; accent
    `#9184d9` only as lines/borders/glows/text marks, never a large fill;
    outlined buttons; component CSS appended to `src/app.css` as ordered

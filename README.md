@@ -9,7 +9,8 @@ Five screens behind a bottom tab bar; the raised center tab is the
 ~30-second post-class logging flow, with a Training / Competition toggle —
 competition entries record matches (outcome, points, submission), one
 cardio rating for the event, a podium placement, the techniques worked,
-and what worked / what didn't.
+and what worked / what didn't. Training entries record both sparring detail
+and whole-session duration plus 1–5 RPE for downstream training-load analysis.
 
 System documentation for contributors (and AI agents) lives in
 [docs/](docs/) — architecture, data model, sync protocol, stats semantics,
@@ -56,7 +57,9 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
   On an existing project, run each delimited addendum section at the bottom
   you haven't run yet — all are idempotent. The "Session start time" ALTER is
   **required** for builds with the When picker, and the "Competition placement
-  + technique tags" ALTER for builds with the goals feature: until they run,
+  + technique tags" ALTER for builds with the goals feature. The "Whole-session
+  duration + RPE" ALTER is required for builds deployed from September 2026:
+  until the applicable section runs,
   pushes to that table 400 and sync shows an error (data stays safe locally).
   A missing competitions table is merely tolerated (comps stay local until it
   exists) — the tolerance covers the whole table, not a missing column.
@@ -79,7 +82,8 @@ parameterized by a local-date `todayIso` and covered by tests:
   only; no UTC (`toISOString`) anywhere — an evening session must land on
   that local day.
 - **Mat hours** = `rounds × round length` (sparring time). The quick-log
-  flow doesn't capture class length, so this is deliberately a lower bound.
+  flow also captures whole-session minutes separately; mat hours deliberately
+  remain the narrower, comparable sparring-time measure.
 - **Streaks** = consecutive weeks meeting a rule, plus the current week once
   it qualifies (an unfinished week never breaks a streak). Three flame rows
   on Progress: ≥ `weeklyGoal` sessions a week, at least one gi and one no-gi
@@ -142,6 +146,9 @@ styled in-system:
   to its most recent occurrence — an evening class logged the next morning
   lands on the right day with the right title — and is stored on the session
   ('HH:MM', shown in history rows).
+- **Session load card**: a 15-minute whole-class duration stepper and 1–5
+  session-RPE chips. Both reset to 60 minutes / RPE 3 after each save so a
+  previous class's per-session facts cannot silently carry forward.
 
 ## Code map
 

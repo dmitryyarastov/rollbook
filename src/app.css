@@ -742,6 +742,26 @@
   margin-top: 9px;
 }
 
+.load-duration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+.load-count {
+  min-width: 96px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--color-accent);
+}
+.load-unit {
+  font-size: 13px;
+  color: var(--color-neutral-500);
+}
+
 .subs-split {
   display: flex;
   gap: 12px;

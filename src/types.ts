@@ -1,4 +1,6 @@
 export type RoundMin = 4 | 5 | 6 | 8
+/** Whole-session perceived intensity: 1 = easy, 5 = maximal. */
+export type SessionIntensity = 1 | 2 | 3 | 4 | 5
 
 export interface Session {
   id: string
@@ -13,6 +15,10 @@ export interface Session {
   subsFor: number
   subsAgainst: number
   roundMin: RoundMin
+  /** Whole class/open-mat duration in minutes; null on legacy rows. */
+  durationMin: number | null
+  /** Whole-session RPE on a 1–5 scale; null on legacy rows. */
+  intensity: SessionIntensity | null
   tags: string[]
   /** Session start, local 'HH:MM' (24h); null on rows from before the picker. */
   time: string | null
@@ -81,6 +87,10 @@ export interface LogForm {
   subsFor: number
   subsAgainst: number
   roundMin: RoundMin
+  /** Whole class/open-mat duration in minutes. */
+  durationMin: number
+  /** Whole-session RPE on a 1–5 scale. */
+  intensity: SessionIntensity
   gi: boolean
   tags: string[]
   /** Picked start time 'HH:MM', or null = "now". */

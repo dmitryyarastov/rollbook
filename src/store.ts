@@ -43,6 +43,14 @@ export function load(): AppData {
       sessions: (Array.isArray(parsed.sessions) ? parsed.sessions : base.sessions).map((s) => ({
         ...s,
         updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
+        durationMin:
+          typeof s.durationMin === 'number' && Number.isInteger(s.durationMin) && s.durationMin >= 1 && s.durationMin <= 600
+            ? s.durationMin
+            : null,
+        intensity:
+          s.intensity === 1 || s.intensity === 2 || s.intensity === 3 || s.intensity === 4 || s.intensity === 5
+            ? s.intensity
+            : null,
         time: typeof s.time === 'string' ? s.time : null,
       })),
       // Blobs from before the competitions feature simply gain the empty array;

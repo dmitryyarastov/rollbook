@@ -36,6 +36,8 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     subsFor: 0,
     subsAgainst: 0,
     roundMin: 5,
+    durationMin: 60,
+    intensity: 3,
     tags: [],
     time: null,
     ...extra,

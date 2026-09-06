@@ -162,6 +162,8 @@ export function demoData(todayIso: string): AppData {
       subsFor: spec.sf,
       subsAgainst: spec.sa,
       roundMin: spec.dur,
+      durationMin: 60,
+      intensity: 3,
       tags: spec.tags,
       time: null,
     }))

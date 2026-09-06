@@ -10,7 +10,7 @@
  */
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
 import { emptyData } from './store'
-import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, Placement, RoundMin, Session, Settings } from './types'
+import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, Placement, RoundMin, Session, SessionIntensity, Settings } from './types'
 
 export type SyncStatus = 'disabled' | 'syncing' | 'synced' | 'offline' | 'error'
 
@@ -42,6 +42,8 @@ interface SessionRow {
   subs_for: number
   subs_against: number
   round_min: number
+  duration_min: number | null
+  intensity: number | null
   tags: string[]
   time: string | null
   created_at: string
@@ -59,6 +61,8 @@ export function toRow(s: Session): SessionRow {
     subs_for: s.subsFor,
     subs_against: s.subsAgainst,
     round_min: s.roundMin,
+    duration_min: s.durationMin,
+    intensity: s.intensity,
     tags: s.tags,
     time: s.time,
     created_at: new Date(s.createdAt).toISOString(),
@@ -67,7 +71,13 @@ export function toRow(s: Session): SessionRow {
 }
 
 const ROUND_MINS: readonly number[] = [4, 5, 6, 8]
+const SESSION_INTENSITIES: readonly number[] = [1, 2, 3, 4, 5]
 const count = (v: unknown): number => Math.max(0, Math.round(Number(v) || 0))
+
+const wholeBetween = (v: unknown, min: number, max: number): number | null => {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= min && n <= max ? n : null
+}
 
 /**
  * Sanitizing pull-side mapper: with no auth, remote rows are untrusted.
@@ -94,6 +104,8 @@ export function fromRow(r: unknown): Session | null {
     subsFor: count(o.subs_for),
     subsAgainst: count(o.subs_against),
     roundMin,
+    durationMin: wholeBetween(o.duration_min, 1, 600),
+    intensity: (SESSION_INTENSITIES.includes(Number(o.intensity)) ? Number(o.intensity) : null) as SessionIntensity | null,
     tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string') : [],
     time: typeof o.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.time) ? o.time : null,
   }

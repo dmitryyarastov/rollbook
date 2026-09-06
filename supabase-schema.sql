@@ -102,3 +102,30 @@ alter table public.sessions add column if not exists "time" text
 alter table public.competitions add column if not exists placement text not null default 'none'
   check (placement in ('none', 'bronze', 'silver', 'gold'));
 alter table public.competitions add column if not exists tags text[] not null default '{}';
+
+-- ── Whole-session duration + RPE (added 2026-09) ────────────────────────────
+-- Nullable for sessions logged before these controls existed. New app rows
+-- always supply both. Apply BEFORE deploying the build that pushes them.
+
+alter table public.sessions add column if not exists duration_min integer;
+alter table public.sessions add column if not exists intensity smallint;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'sessions_duration_min_check'
+      and conrelid = 'public.sessions'::regclass
+  ) then
+    alter table public.sessions add constraint sessions_duration_min_check
+      check (duration_min is null or duration_min between 1 and 600);
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'sessions_intensity_check'
+      and conrelid = 'public.sessions'::regclass
+  ) then
+    alter table public.sessions add constraint sessions_intensity_check
+      check (intensity is null or intensity between 1 and 5);
+  end if;
+end $$;

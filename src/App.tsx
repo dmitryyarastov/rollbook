@@ -28,7 +28,17 @@ function useTodayIso(): string {
   return iso
 }
 
-const EMPTY_FORM: LogForm = { rolls: 0, subsFor: 0, subsAgainst: 0, roundMin: 5, gi: true, tags: [], when: null }
+const EMPTY_FORM: LogForm = {
+  rolls: 0,
+  subsFor: 0,
+  subsAgainst: 0,
+  roundMin: 5,
+  durationMin: 60,
+  intensity: 3,
+  gi: true,
+  tags: [],
+  when: null,
+}
 const EMPTY_COMP_FORM: CompForm = { name: '', gi: true, cardio: 0, placement: 'none', workedWell: '', didntWork: '', matches: [], tags: [] }
 
 export default function App() {
@@ -106,13 +116,25 @@ export default function App() {
       subsFor: form.subsFor,
       subsAgainst: form.subsAgainst,
       roundMin: form.roundMin,
+      durationMin: form.durationMin,
+      intensity: form.intensity,
       tags: form.tags,
       time: toHhmm(start),
     }
     update((d) => ({ ...d, sessions: [...d.sessions, session] }))
     // `when` resets too: a stale picked time would silently re-date the next
-    // session (gi/roundMin stay — those are sticky preferences, not facts).
-    setForm((f) => ({ ...f, rolls: 0, subsFor: 0, subsAgainst: 0, tags: [], when: null }))
+    // session. Gi/roundMin stay because they are sticky preferences; duration
+    // and intensity reset because they are facts about this particular class.
+    setForm((f) => ({
+      ...f,
+      rolls: 0,
+      subsFor: 0,
+      subsAgainst: 0,
+      durationMin: EMPTY_FORM.durationMin,
+      intensity: EMPTY_FORM.intensity,
+      tags: [],
+      when: null,
+    }))
     setSaved(true)
     requestPush()
   }

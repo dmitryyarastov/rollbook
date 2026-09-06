@@ -11,7 +11,7 @@ Every file in `src/`, one responsibility each:
 | `src/main.tsx` | Entry point: imports Inter 400/500 (self-hosted @fontsource), `nocturne.css`, `app.css`; mounts `<App/>` in StrictMode; registers `sw.js` in prod builds only (failure swallowed — offline is a nice-to-have). |
 | `src/App.tsx` | Composition root. Owns all tab-surviving transient UI state, all mutation actions (`saveSession`, `saveComp`, `addTag`, `setFocus`), tab switching, the `useTodayIso` minute clock, and the `window.rollbook` seed/clear helpers. Default export `App`. |
 | `src/store.ts` | Persistence: `STORAGE_KEY` (`rollbook:v1`), `DEFAULT_TAGS`, `emptyData`, `load` (parse + per-field defaulting = the schema-migration idiom, see [data-model.md](data-model.md)), `persist`, the `useAppData` hook, `uid`. |
-| `src/types.ts` | The entire domain vocabulary: `Session`, `Competition`, `CompMatch`, `AppData`, `FocusGoal`, `Settings`, form types (`LogForm`, `CompForm`), UI unions (`Tab`, `GiFilter`, `LogMode`), value whitelists (`RoundMin`, `CardioRating`, `CompOutcome`). |
+| `src/types.ts` | The entire domain vocabulary: `Session`, `Competition`, `CompMatch`, `AppData`, `FocusGoal`, `Settings`, form types (`LogForm`, `CompForm`), UI unions (`Tab`, `GiFilter`, `LogMode`), value whitelists (`RoundMin`, `SessionIntensity`, `CardioRating`, `CompOutcome`). |
 | `src/dates.ts` | Local-date helpers (`toIso`, `parseIso`, `addDays`, `mondayOf`, formatters, `resolveWhen`, `autoTitle`, `toHhmm`, `fmtTime`). Enforces the project-wide ban on UTC APIs for calendar dates; weeks are Monday-start. |
 | `src/stats.ts` | Every derived number on screen, as pure functions of `(Session[], todayIso)` — competitions are type-excluded so they can never affect stats (see [stats.md](stats.md)). Also `historyFeed` (the one function that takes competitions, for display interleaving) and `withSessionTags`. |
 | `src/curriculum.ts` | Gracie Barra curriculum grouping/ordering of technique tags: `CURRICULUM_GROUPS`, `groupOfTag`, `groupTagsByCurriculum`, `orderTagsByCurriculum`. Display-time only; exact-name lookup, no heuristics (see [curriculum.md](curriculum.md)). |
@@ -25,12 +25,12 @@ Every file in `src/`, one responsibility each:
 | `src/components/TabBar.tsx` | Bottom nav: the `TABS` array (id/label/icon), renders the five tab buttons, `aria-current` on the active one. |
 | `src/components/Chip.tsx` | Toggle chip (`filter`/`dur`/`tech` size variants), `aria-pressed`. |
 | `src/components/Stepper.tsx` | +/− stepper button (`lg`/`sm`, optional accent). |
-| `src/components/SessionRow.tsx` | Session history row; optional expanded accordion panel (subs, round length, tags). Root is a `<button>`, children are `<span>`s (valid HTML inside a button). |
+| `src/components/SessionRow.tsx` | Session history row; summary includes whole duration/RPE when known, with an optional expanded accordion panel (subs, round length, tags). Root is a `<button>`, children are `<span>`s (valid HTML inside a button). |
 | `src/components/CompRow.tsx` | Competition history row, same accordion pattern; computes the W-L(-D) record, shows matches/cardio/notes when expanded. |
 | `src/components/FocusCard.tsx` | "Focus this month" card, shared by Home and Techniques (`variant` prop moves the % readout); pencil toggle opens the inline edit panel (title input + curriculum-ordered linked-tag picker). |
 | `src/screens/Home.tsx` | Dashboard: week hero + bars, streak and subs-30d cards, FocusCard, 3 most recent history entries, sync-status label. |
 | `src/screens/Sessions.tsx` | Full history feed with Gi/No-Gi filter chips and the expand/collapse accordion. |
-| `src/screens/Log.tsx` | Both log forms: training (WhenCard, rounds, subs, tag chips + inline new-tag input) and competition (`CompFields`, `MatchEditor`, `WhenCard` lives here too as a private component). Owns `SCHEDULED_SLOTS` (19:30 / 20:30) and mirrors sync's `MAX_MATCHES=50` cap. |
+| `src/screens/Log.tsx` | Both log forms: training (WhenCard, rounds, subs, whole duration, 1–5 RPE, tag chips + inline new-tag input) and competition (`CompFields`, `MatchEditor`, `WhenCard` lives here too as a private component). Owns `SCHEDULED_SLOTS` (19:30 / 20:30) and mirrors sync's `MAX_MATCHES=50` cap. |
 | `src/screens/Techniques.tsx` | 30-day most-worked bars + the all-tags cloud grouped by curriculum section, plus the FocusCard. |
 | `src/screens/Progress.tsx` | Streak ring, 12-week volume bars, year totals, milestones (gated on `settings.showMilestones`). |
 | `src/*.test.ts` | Vitest suites colocated with their subjects: `dates`, `stats`, `store`, `sync`, `curriculum`, `demo` (see [testing.md](testing.md)). |
@@ -46,7 +46,7 @@ Outside `src/`: `index.html` (shell + manifest link), `public/sw.js` + `public/m
 - `tab: Tab` — the active screen.
 - `expandedId` — which history row's accordion is open (shared by the Home→Sessions deep link).
 - `filter: GiFilter` — Sessions screen filter.
-- `form: LogForm` — the training log form. After save, counts/tags/`when` reset but `gi`/`roundMin` persist (sticky preferences vs per-session facts).
+- `form: LogForm` — the training log form. After save, counts/tags/`when` reset, whole duration/RPE reset to 60/3, and only `gi`/`roundMin` persist (sticky preferences vs per-session facts).
 - `logMode: LogMode` + `compForm: CompForm` — Log screen mode toggle and the competition form; both forms keep their state across a mode switch.
 - `saved` — the post-save confirmation flag; cleared by any form edit, mode switch, or tab switch.
 

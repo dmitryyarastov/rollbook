@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { autoTitle, fmtTime, resolveWhen, toIso } from '../dates'
 import { Chip } from '../components/Chip'
 import { Stepper } from '../components/Stepper'
-import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, Placement, RoundMin } from '../types'
+import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, Placement, RoundMin, SessionIntensity } from '../types'
 
 const DUR_OPTIONS: RoundMin[] = [4, 5, 6, 8]
+const INTENSITY_OPTIONS: SessionIntensity[] = [1, 2, 3, 4, 5]
 /** Pre-scheduled class slots (local, 24h): 7:30 PM no-gi, 8:30 PM gi. */
 const SCHEDULED_SLOTS = ['19:30', '20:30']
 const CARDIO_OPTIONS: CardioRating[] = [1, 2, 3, 4, 5]
@@ -179,6 +180,38 @@ export function Log({
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="card card--lg log-card">
+          <div className="kicker">Session load</div>
+          <div className="load-duration">
+            <Stepper
+              kind="minus"
+              size="sm"
+              label="15 fewer session minutes"
+              onClick={() => onPatch({ durationMin: Math.max(15, form.durationMin - 15) })}
+            />
+            <div className="load-count">
+              {form.durationMin}
+              <span className="load-unit"> min</span>
+            </div>
+            <Stepper
+              kind="plus"
+              size="sm"
+              accent
+              label="15 more session minutes"
+              onClick={() => onPatch({ durationMin: Math.min(600, form.durationMin + 15) })}
+            />
+          </div>
+          <div className="dur-cap">whole class · 15 minute steps</div>
+          <div className="dur-row">
+            {INTENSITY_OPTIONS.map((n) => (
+              <Chip key={n} variant="dur" on={form.intensity === n} onClick={() => onPatch({ intensity: n })}>
+                {n}
+              </Chip>
+            ))}
+          </div>
+          <div className="dur-cap">session RPE — 1 easy · 5 maximal</div>
         </section>
 
         <section className="card card--lg log-card">

@@ -22,8 +22,9 @@ mechanics are in [build-pwa.md](build-pwa.md).
 ## supabase-schema.sql is the schema of record
 
 `supabase-schema.sql` at the repo root is the only description of the live database.
-There are no migration files and no migration tooling; the anon key cannot run DDL, so
-**every schema change is hand-run by the owner in the Supabase dashboard SQL editor**.
+There are no local migration files or CLI migration stack; the anon key cannot run DDL.
+Schema changes are applied by the owner in the Supabase SQL editor or through an
+owner-authorized migration tool, with this file remaining the replayable record.
 
 ### The addendum pattern
 
@@ -38,6 +39,11 @@ boundaries are the "what do I paste on an existing project" units. Current secti
 | Competitions (added 2026-08) | `competitions` table, index, RLS, policies, `revoke delete` | `create table if not exists`, `create index if not exists`, `drop policy if exists` before each `create policy` (Postgres has no `create policy if not exists`) |
 | Session start time (added 2026-08) | `sessions.time` column with HH:MM check | `add column if not exists` |
 | Competition placement + technique tags (added 2026-08) | `competitions.placement` column (default `'none'`, medal-value check) and `competitions.tags` `text[]` column | `add column if not exists` |
+| Whole-session duration + RPE (added 2026-09) | nullable `sessions.duration_min` integer (1–600) and `sessions.intensity` smallint (1–5) | `add column if not exists`; named constraints guarded through `pg_constraint` |
+
+Live status: `20260906065458_add_session_duration_intensity` was applied to project
+`rdhzcvmvtxnzittmclgr` on 6 Sep 2026 before the matching app deploy. The 17 historical
+session rows intentionally remain null for both fields; values are not backfilled by guess.
 
 Applying on an existing project: paste and run **just the new section** in the SQL
 editor. Applying on a fresh project: run the whole file top to bottom.
@@ -109,9 +115,9 @@ KEY='sb_publishable__QGdeG-Y0kPIafSQpIIfSw__B1MsCKv'
 BASE='https://rdhzcvmvtxnzittmclgr.supabase.co/rest/v1'
 AUTH=(-H "apikey: $KEY" -H "Authorization: Bearer $KEY")
 
-# Latest sessions (id, date, time, title), newest first
+# Latest sessions (including whole duration/RPE), newest first
 curl -s "${AUTH[@]}" \
-  "$BASE/sessions?select=id,date,time,title,updated_at&user_id=eq.dmitrii&order=date.desc&limit=10"
+  "$BASE/sessions?select=id,date,time,title,duration_min,intensity,updated_at&user_id=eq.dmitrii&order=date.desc&limit=10"
 
 # Exact row count without a body
 curl -sI "${AUTH[@]}" -H 'Prefer: count=exact' \
@@ -186,6 +192,10 @@ every updated device immediately shows a sync error.
   not a bug** — do not "fix" it in code. If the owner ever wants it corrected, the only
   route is hand-SQL per row (`update … set date = …, updated_at = now() where id = …`);
   the bumped `updated_at` propagates the fix to devices on their next pull.
+- **Legacy session load fields.** The 17 sessions present when whole-duration/RPE
+  collection launched on 6 Sep 2026 have `duration_min = null` and `intensity = null`.
+  This is missing observation, not zero/rest. Do not bulk-backfill guessed values; the
+  parent training hub withholds BJJ-load analyses until coverage is defensible.
 
 ## Future auth migration
 
