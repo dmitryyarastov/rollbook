@@ -25,7 +25,7 @@ Sibling docs: [architecture.md](architecture.md) (component tree, state flow), [
 | `--color-neutral-100` | `#f3f5fe` | (unused; top of ramp) |
 | `--color-neutral-200` | `#e4e7f5` | (unused) |
 | `--color-neutral-300` | `#cfd3e5` | Bright secondary text: stepper icons, badge text, tagstat text, comp note text |
-| `--color-neutral-400` | `#b2b6ca` | Mid text: units (`.stat-u`), captions (`.hero-cap`), AGAINST numbers, hover-brightened icon/chip text |
+| `--color-neutral-400` | `#b2b6ca` | Mid text: units (`.stat-u`), captions (`.hero-cap`), DRAW pills, hover-brightened icon/chip text |
 | `--color-neutral-500` | `#9397ab` | Muted text: subtitles, meta lines, kickers, empty states, inactive tab labels, LOSS pills |
 | `--color-neutral-600` | `#75798c` | Faintest text: `.micro`, field labels, hints, placeholders, sync note, tagstat counts |
 | `--color-neutral-700` | `#595d6c` | Control borders: `.input` border, `.step` border, hover border for cards/chips |
@@ -33,7 +33,7 @@ Sibling docs: [architecture.md](architecture.md) (component tree, state flow), [
 | `--color-neutral-900` | `#292b31` | Darkest fill: empty bar tracks (`.weekbar-fill`, `.progress-track`, `.trow-track`), `.srow-badge` bg, `.tagstat` bg, tab-bar border-top |
 | `--color-accent-100` | `#f5f4ff` | (unused) |
 | `--color-accent-200` | `#e7e5fe` | (unused) |
-| `--color-accent-300` | `#d2cefd` | Bright accent TEXT: FOR numbers, on-state chip/badge text, WIN pills, `.link:hover`, `.ring-n`, `.saved-msg`, active tab label |
+| `--color-accent-300` | `#d2cefd` | Bright accent TEXT: on-state chip/badge text, WIN pills, match ME labels, `.link:hover`, `.ring-n`, `.saved-msg`, hot streak flames, active tab label |
 | `--color-accent-400` | `#b5abfc` | (unused) |
 | `--color-accent-500` | `#968ae0` | Bright bar fills: active week bar, current-week volume bar, #1 technique bar |
 | `--color-accent-600` | `#796cbf` | (unused) |
@@ -58,12 +58,12 @@ All component CSS lives in `src/app.css` as **ordered sections** delimited by `/
 3. `Cards` — `.card`, `.card--lg`, `.card--accent`
 4. `Home: header` — `.home-head`, `.home-title`, `.home-date`, `.sync-note`
 5. `Home: hero card` — `.hero`, `.hero-num`, `.weekbars`
-6. `Stat cards` — `.stat-row`, `.stat-card`, `.subs-line`
+6. `Stat cards` — `.stat-row`, `.stat-card` (both Home stat cards — Streak and Specific · week — share `.stat-line`/`.stat-n`/`.stat-u`/`.stat-note`; the old `.subs-line` block left with the Subs card, 2026-10)
 7. `Focus card` — `.focus`, `.progress-track`, `.icon-btn`, `.focus-panel`, `.field-label`, `.input`
 8. `Session rows` — `.slist`, `.srow`, `.srow-badge`, `.srow-panel`, `.tagchip`
 9. `Competition rows` — `.srow-badge--comp`, `.crow-*`
 10. `Chips (filters, durations, technique toggles)` — `.chips`, `.chip`, `.chip-input`
-11. `Log screen` — `.log-stack`, `.log-card`, `.stepper-row`, `.step`, `.dur-row`, `.dur-cap`, `.subs-split`, `.vdiv`, `.save-btn`, `.saved-msg`
+11. `Log screen` — `.log-stack`, `.log-card`, `.stepper-row`, `.step`, `.spec-label`/`.spec-stepper`/`.spec-count`, `.dur-row`, `.dur-cap`, `.vdiv`, `.save-btn`, `.saved-msg` (`.vdiv` survives the removed subs card — the match-points editor still uses it; `.subs-split` and friends went with the Submissions card, 2026-10)
 12. `Log: when (session start)` — `.when-row`, `.input--time`
 13. `Log: competition mode` — `.log-mode`, `.match`, `.match-*`, `.input--sm`, `.input--area`
 14. `Techniques screen` — `.trows`, `.trow`, `.tag-cloud`, `.tagstat`
@@ -97,13 +97,15 @@ The trailing `+ Add` control in the Log tag picker is a bare `<button class="chi
 
 ### Stepper — `src/components/Stepper.tsx`
 
-Props: `{ kind: 'minus' | 'plus'; size: 'lg' | 'sm'; accent?: boolean; label: string; onClick }`. Renders `<button class="step step--lg|step--sm [step--accent]" aria-label={label}>` with a Phosphor Minus/Plus (icon size 20 for lg, 16 for sm). Convention: **the plus (increment) side gets `accent` when it is the "primary" direction the user usually taps** — rounds plus, subs-FOR plus, my-points plus are accent; all minus buttons and the "against/them" plus are neutral. Callers clamp at 0 with `Math.max(0, n - 1)` — the component itself has no min/max. `.step::after { inset: -6px }` extends the tap target invisibly; `.icon-btn::after { inset: -8px }` does the same for pencil/close icon buttons — keep this pattern for any new small tap target.
+Props: `{ kind: 'minus' | 'plus'; size: 'lg' | 'sm'; accent?: boolean; label: string; onClick }`. Renders `<button class="step step--lg|step--sm [step--accent]" aria-label={label}>` with a Phosphor Minus/Plus (icon size 20 for lg, 16 for sm). Convention: **the plus (increment) side gets `accent` when it is the "primary" direction the user usually taps** — rounds plus and my-points plus are accent; all minus buttons, the "them" plus, and both sides of the compact SPECIFIC stepper (a secondary count, not the headline number) are neutral. Callers clamp at 0 with `Math.max(0, n - 1)` — the component itself has no min/max.
+
+The Log screen's Rounds card stacks three things: the `lg` rolls stepper flanking the 60px `.log-count`, then a compact positional-sparring block — `.spec-label` (an 11px uppercase "SPECIFIC" caption) over a `.spec-stepper` of two `sm` neutral steppers around the 30px `.spec-count` — then the round-length `dur-row`. Both counts land on the session (`rolls`/`specific`) and every round stat sums them (see [stats.md](stats.md)). `.step::after { inset: -6px }` extends the tap target invisibly; `.icon-btn::after { inset: -8px }` does the same for pencil/close icon buttons — keep this pattern for any new small tap target.
 
 ### SessionRow + CompRow — the accordion row pattern
 
 `src/components/SessionRow.tsx` and `src/components/CompRow.tsx` share one CSS block (`.srow`) and one structural rule: **the row root is a single `<button class="card srow">` with `aria-expanded`, and therefore every descendant is a `<span>`, never a `<div>`** — divs inside buttons are invalid HTML that browsers will silently re-parent, breaking layout. Since spans are inline by default, app.css force-blocks the structural children (`.srow-body, .srow-title, .srow-meta, .srow-panel, ... { display: block }`, plus per-class `display: block` on every `crow-*` child and flex on the row containers). **If you add an element inside these rows, it must be a span and you must give its class an explicit `display` in app.css.**
 
-Anatomy: `.srow-main` (always visible) = 40px `.srow-badge` (weekday letters via `weekdayBadge` in `src/dates.ts`; `--gi` accent-tinted for gi sessions; `--comp` shows a Trophy icon with an accent border) + `.srow-title`/`.srow-meta` body + `.srow-right` (big number `.srow-rolls` over a `.micro` caption — rounds count for sessions, W-L(-D) record string for comps). A comp's `.srow-meta` appends the podium label (Bronze/Silver/Gold) after the match count when `placement !== 'none'` — the parts are `filter(Boolean).join(' · ')`-ed, so an unplaced comp shows no placement segment. When `expanded`, `.srow-panel` renders below a `neutral-800` border-top: sessions show a `.srow-stats` triplet + `.tagchip` list; comps show per-match lines (`.crow-match`: outcome pill + score + optional submission), a cardio line, the two note blocks, and — when tagged — the same `.tagchip` list as sessions. `.srow--open` swaps the card border to `accent-800`. Expansion state lives in the parent (`expandedId` in `src/App.tsx` — single-open accordion; Home rows navigate to Sessions and open there instead).
+Anatomy: `.srow-main` (always visible) = 40px `.srow-badge` (weekday letters via `weekdayBadge` in `src/dates.ts`; `--gi` accent-tinted for gi sessions; `--comp` shows a Trophy icon with an accent border) + `.srow-title`/`.srow-meta` body + `.srow-right` (big number `.srow-rolls` over a `.micro` caption — the **combined** rounds count for sessions, `sessionRounds(s) = rolls + specific` from `src/stats.ts`, W-L(-D) record string for comps). A comp's `.srow-meta` appends the podium label (Bronze/Silver/Gold) after the match count when `placement !== 'none'` — the parts are `filter(Boolean).join(' · ')`-ed, so an unplaced comp shows no placement segment. When `expanded`, `.srow-panel` renders below a `neutral-800` border-top: sessions show `.srow-stats` — a neutral SPECIFIC count rendered **only when `specific > 0`**, a condensed `{for}–{against}` / "SUBS F–A" stat rendered **only when the row carries historical sub data** (`subsFor + subsAgainst > 0`; counting was retired 2026-10), and round length — plus the `.tagchip` list; comps show per-match lines (`.crow-match`: outcome pill + score + optional submission), a cardio line, the two note blocks, and — when tagged — the same `.tagchip` list as sessions. `.srow--open` swaps the card border to `accent-800`. Expansion state lives in the parent (`expandedId` in `src/App.tsx` — single-open accordion; Home rows navigate to Sessions and open there instead).
 
 ### FocusCard — `src/components/FocusCard.tsx`
 
@@ -126,9 +128,9 @@ The `TABS` array is the registration point: `{ id: Tab; label; icon?: Icon }`. *
 **The caps system** (three registers of uppercase micro-type, tracked out; `.kicker` and `.section-label` are `font-weight: 500`, `.micro` stays body 400):
 - `.kicker` — 11px, letter-spacing 0.08em, neutral-500: the label INSIDE a card, above its content ("This week", "Rounds sparred"). `.kicker--accent` for the FocusCard only.
 - `.section-label` — 12px, 0.08em, neutral-400: the label BETWEEN cards, naming a page section ("Recent sessions", "Milestones"); paired with `.section-head` (label + `.link` action on one baseline) or `.label-row` (label alone, 24px top margin).
-- `.micro` — 10px, 0.06em, neutral-600, uppercase supplied by the caller in the string ("ROUNDS", "SUBS FOR", "MATCH 1"): the caption under/next to a number. Related: `.field-label` (10px uppercase, form-field labels) and `.cloud-group-label` (10px uppercase, curriculum group headers).
+- `.micro` — 10px, 0.06em, neutral-600, uppercase supplied by the caller in the string ("ROUNDS", "SPECIFIC", "MATCH 1"): the caption under/next to a number. Related: `.field-label` (10px uppercase, form-field labels) and `.cloud-group-label` (10px uppercase, curriculum group headers).
 
-**FOR vs AGAINST coloring** — anything "mine/positive" is `accent-300`, anything "theirs/negative" is neutral. Instances that must stay consistent: `.subs-for` vs `.subs-against` (Home stat card), `.srow-stat-n--for` (session panel), `.subs-half-label--for/--against` (Log steppers), `.match-half-label--me/--them` (match points), `.crow-oc--win` (accent-300) vs `--loss` (neutral-500) vs `--draw` (neutral-400). Any new mine/theirs or win/loss surface uses exactly these two colors.
+**FOR vs AGAINST coloring** — anything "mine/positive" is `accent-300`, anything "theirs/negative" is neutral. Instances that must stay consistent: `.match-half-label--me/--them` (match points) and `.crow-oc--win` (accent-300) vs `--loss` (neutral-500) vs `--draw` (neutral-400). The convention applies only to mine-vs-theirs surfaces — neutral counts like the session panel's SPECIFIC stat deliberately take no accent (`.srow-stat-n--for` and the `.subs-*` classes retired with sub counting, 2026-10). Any new mine/theirs or win/loss surface uses exactly these two colors.
 
 **dur-row / dur-cap** — a centered row of `dur`-variant chips with a single 11px neutral-600 caption below (`.dur-cap`). Used for round length ("round length"), session RPE ("1 easy · 5 maximal"), cardio ("cardio — 1 fine · 5 gassed"), the comp form's podium placement chips ("podium" — None/Bronze/Silver/Gold, single-select), and the When picker's live today/yesterday caption. This is the house pattern for "small option row + explanatory caption".
 

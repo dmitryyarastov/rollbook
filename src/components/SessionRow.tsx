@@ -1,4 +1,5 @@
 import { fmtShort, fmtTime, weekdayBadge } from '../dates'
+import { sessionRounds } from '../stats'
 import type { Session } from '../types'
 
 interface SessionRowProps {
@@ -26,21 +27,29 @@ export function SessionRow({ session: s, expanded = false, onClick }: SessionRow
           </span>
         </span>
         <span className="srow-right">
-          <span className="srow-rolls">{s.rolls}</span>
+          <span className="srow-rolls">{sessionRounds(s)}</span>
           <span className="micro">ROUNDS</span>
         </span>
       </span>
       {expanded && (
         <span className="srow-panel">
           <span className="srow-stats">
-            <span className="srow-stat">
-              <span className="srow-stat-n srow-stat-n--for">{s.subsFor}</span>
-              <span className="micro">SUBS FOR</span>
-            </span>
-            <span className="srow-stat">
-              <span className="srow-stat-n">{s.subsAgainst}</span>
-              <span className="micro">AGAINST</span>
-            </span>
+            {/* Neutral count, shown only when the session actually logged some. */}
+            {s.specific > 0 && (
+              <span className="srow-stat">
+                <span className="srow-stat-n">{s.specific}</span>
+                <span className="micro">SPECIFIC</span>
+              </span>
+            )}
+            {/* Sub counting retired 2026-10 — shown only on rows that have data. */}
+            {s.subsFor + s.subsAgainst > 0 && (
+              <span className="srow-stat">
+                <span className="srow-stat-n">
+                  {s.subsFor}–{s.subsAgainst}
+                </span>
+                <span className="micro">SUBS F–A</span>
+              </span>
+            )}
             <span className="srow-stat">
               <span className="srow-stat-n">{s.roundMin} min</span>
               <span className="micro">ROUND LEN</span>

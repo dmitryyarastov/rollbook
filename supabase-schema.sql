@@ -129,3 +129,13 @@ begin
       check (intensity is null or intensity between 1 and 5);
   end if;
 end $$;
+
+-- ── Specific (positional) rounds (added 2026-10) ─────────────────────────────
+-- Positional/"specific" sparring rounds, logged beside free rolls; every
+-- round-based stat counts rolls + specific together. Zero on rows from
+-- before the split. Idempotent; run once, BEFORE deploying the build that
+-- pushes the column. (Submission counting retired from the UI at the same
+-- time — subs_for/subs_against stay for historical rows.)
+
+alter table public.sessions add column if not exists specific integer not null default 0
+  check (specific between 0 and 1000);

@@ -26,6 +26,7 @@ function mk(over: Partial<Session> = {}): Session {
     title: 'Evening class',
     gi: true,
     rolls: 5,
+    specific: 0,
     subsFor: 1,
     subsAgainst: 2,
     roundMin: 5,
@@ -121,6 +122,13 @@ describe('row mapping', () => {
   it('keeps only string members of tags', () => {
     const s = fromRow({ ...toRow(mk()), tags: ['ok', 3, null, 'also ok'] })
     expect(s!.tags).toEqual(['ok', 'also ok'])
+  })
+
+  it('round-trips specific rounds and clamps tampered values', () => {
+    expect(fromRow(toRow(mk({ specific: 3 })))!.specific).toBe(3)
+    expect(fromRow({ ...toRow(mk()), specific: 'lots' })!.specific).toBe(0)
+    expect(fromRow({ ...toRow(mk()), specific: -2 })!.specific).toBe(0)
+    expect(fromRow({ ...toRow(mk()), specific: 1e9 })!.specific).toBe(1000)
   })
 
   it('round-trips the session time and nulls anything malformed', () => {

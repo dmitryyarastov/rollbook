@@ -128,6 +128,22 @@ export function Log({
             <div className="log-count">{form.rolls}</div>
             <Stepper kind="plus" size="lg" accent label="More rounds" onClick={() => onPatch({ rolls: form.rolls + 1 })} />
           </div>
+          <div className="spec-label">SPECIFIC</div>
+          <div className="spec-stepper">
+            <Stepper
+              kind="minus"
+              size="sm"
+              label="Fewer specific rounds"
+              onClick={() => onPatch({ specific: Math.max(0, form.specific - 1) })}
+            />
+            <div className="spec-count">{form.specific}</div>
+            <Stepper
+              kind="plus"
+              size="sm"
+              label="More specific rounds"
+              onClick={() => onPatch({ specific: form.specific + 1 })}
+            />
+          </div>
           <div className="dur-row">
             {DUR_OPTIONS.map((d) => (
               <Chip key={d} variant="dur" on={form.roundMin === d} onClick={() => onPatch({ roundMin: d })}>
@@ -136,50 +152,6 @@ export function Log({
             ))}
           </div>
           <div className="dur-cap">round length</div>
-        </section>
-
-        <section className="card card--lg log-card">
-          <div className="kicker">Submissions</div>
-          <div className="subs-split">
-            <div className="subs-half">
-              <div className="subs-half-label subs-half-label--for">FOR</div>
-              <div className="subs-stepper">
-                <Stepper
-                  kind="minus"
-                  size="sm"
-                  label="Fewer subs for"
-                  onClick={() => onPatch({ subsFor: Math.max(0, form.subsFor - 1) })}
-                />
-                <div className="subs-count">{form.subsFor}</div>
-                <Stepper
-                  kind="plus"
-                  size="sm"
-                  accent
-                  label="More subs for"
-                  onClick={() => onPatch({ subsFor: form.subsFor + 1 })}
-                />
-              </div>
-            </div>
-            <div className="vdiv" />
-            <div className="subs-half">
-              <div className="subs-half-label subs-half-label--against">AGAINST</div>
-              <div className="subs-stepper">
-                <Stepper
-                  kind="minus"
-                  size="sm"
-                  label="Fewer subs against"
-                  onClick={() => onPatch({ subsAgainst: Math.max(0, form.subsAgainst - 1) })}
-                />
-                <div className="subs-count">{form.subsAgainst}</div>
-                <Stepper
-                  kind="plus"
-                  size="sm"
-                  label="More subs against"
-                  onClick={() => onPatch({ subsAgainst: form.subsAgainst + 1 })}
-                />
-              </div>
-            </div>
-          </div>
         </section>
 
         <section className="card card--lg log-card">

@@ -9,8 +9,9 @@ Five screens behind a bottom tab bar; the raised center tab is the
 ~30-second post-class logging flow, with a Training / Competition toggle —
 competition entries record matches (outcome, points, submission), one
 cardio rating for the event, a podium placement, the techniques worked,
-and what worked / what didn't. Training entries record both sparring detail
-and whole-session duration plus 1–5 RPE for downstream training-load analysis.
+and what worked / what didn't. Training entries record free-sparring and
+positional ("specific") rounds, round length, and whole-session duration
+plus 1–5 RPE for downstream training-load analysis.
 
 System documentation for contributors (and AI agents) lives in
 [docs/](docs/) — architecture, data model, sync protocol, stats semantics,
@@ -56,9 +57,10 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
 - Schema: [supabase-schema.sql](supabase-schema.sql) (run once in the SQL editor).
   On an existing project, run each delimited addendum section at the bottom
   you haven't run yet — all are idempotent. The "Session start time" ALTER is
-  **required** for builds with the When picker, and the "Competition placement
-  + technique tags" ALTER for builds with the goals feature. The "Whole-session
-  duration + RPE" ALTER is required for builds deployed from September 2026:
+  **required** for builds with the When picker, the "Competition placement
+  + technique tags" ALTER for builds with the goals feature, the "Whole-session
+  duration + RPE" ALTER for builds deployed from September 2026, and the
+  "Specific (positional) rounds" ALTER for builds from October 2026:
   until the applicable section runs,
   pushes to that table 400 and sync shows an error (data stays safe locally).
   A missing competitions table is merely tolerated (comps stay local until it
@@ -81,16 +83,22 @@ parameterized by a local-date `todayIso` and covered by tests:
 - **Weeks are Monday–Sunday**, in the device's timezone. Local date math
   only; no UTC (`toISOString`) anywhere — an evening session must land on
   that local day.
-- **Mat hours** = `rounds × round length` (sparring time). The quick-log
-  flow also captures whole-session minutes separately; mat hours deliberately
-  remain the narrower, comparable sparring-time measure.
+- **Rounds** count free sparring and positional ("specific") rounds
+  together — the week hero and bars, the 12-week volume chart, year totals,
+  and the 250-round milestone all use that combined number; specific rounds
+  also get their own weekly card on Home.
+- **Mat hours** = `(free rolls + specific rounds) × round length` (sparring
+  time). The quick-log flow also captures whole-session minutes separately;
+  mat hours deliberately remain the narrower, comparable sparring-time measure.
 - **Streaks** = consecutive weeks meeting a rule, plus the current week once
   it qualifies (an unfinished week never breaks a streak). Three flame rows
   on Progress: ≥ `weeklyGoal` sessions a week, at least one gi and one no-gi
   session in the same week, and a session tagged the focus tag each week.
-- **Subs / technique counts / focus progress** use a 30-day window ending
-  today. Focus progress = share of those sessions tagged with the focus's
-  linked tag.
+- **Technique counts** use a 30-day window ending today. **Focus progress**
+  = share of the current Monday-start week's sessions tagged with the
+  focus's linked tag ("Focus this week"). Submission counting was retired
+  from the UI in October 2026 — historical tallies still show, condensed, on
+  old session rows.
 - **Milestones** are the season goals: a medal at AJP World Pro Ams (the
   earliest competition titled "AJP…" with a podium placement — non-AJP
   medals don't count), open guard played in competition (the earliest
@@ -100,8 +108,8 @@ parameterized by a local-date `todayIso` and covered by tests:
 
 - **Competitions never touch training stats**: they interleave with sessions
   on the Sessions screen and Home's recent list, and their placement/tags
-  feed the two competition milestones above — but streak, mat hours, rounds,
-  and sub counts come from sessions only.
+  feed the two competition milestones above — but streak, mat hours, and
+  rounds come from sessions only.
 
 Settings `weeklyGoal` (default 2) and `showMilestones` are stored under the
 `rollbook:v1` localStorage key; there is deliberately no settings UI (per
@@ -149,6 +157,10 @@ styled in-system:
 - **Session load card**: a 15-minute whole-class duration stepper and 1–5
   session-RPE chips. Both reset to 60 minutes / RPE 3 after each save so a
   previous class's per-session facts cannot silently carry forward.
+- **Specific rounds** (October 2026): a compact stepper in the Rounds card
+  logs positional-sparring rounds beside free rolls; every round stat counts
+  the two together. The prototype's Submissions card was retired at the same
+  time — old sessions keep and display their historical sub tallies.
 
 ## Code map
 

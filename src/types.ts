@@ -11,7 +11,11 @@ export interface Session {
   updatedAt: number
   title: string
   gi: boolean
+  /** Free-sparring rounds. Round-based stats count rolls + specific together. */
   rolls: number
+  /** Positional ("specific") sparring rounds; 0 on rows from before the split. */
+  specific: number
+  /** Submission counting retired from the UI 2026-10; kept for historical rows. */
   subsFor: number
   subsAgainst: number
   roundMin: RoundMin
@@ -60,7 +64,7 @@ export interface Competition {
 
 export interface FocusGoal {
   title: string
-  /** Tag whose 30-day frequency drives the progress bar. Empty = no goal set. */
+  /** Tag whose current-week frequency drives the progress bar. Empty = no goal set. */
   tag: string
 }
 
@@ -84,8 +88,7 @@ export type GiFilter = 'All' | 'Gi' | 'No-Gi'
 
 export interface LogForm {
   rolls: number
-  subsFor: number
-  subsAgainst: number
+  specific: number
   roundMin: RoundMin
   /** Whole class/open-mat duration in minutes. */
   durationMin: number

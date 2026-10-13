@@ -15,7 +15,7 @@ interface FocusCardProps {
 }
 
 /**
- * "Focus this month" card. The design ships no edit UI; the handoff's
+ * "Focus this week" card. The design ships no edit UI; the handoff's
  * real-app additions call for an editable goal, so a pencil toggle opens an
  * in-system panel (title input + linked-tag picker) below the card content.
  */
@@ -29,14 +29,14 @@ export function FocusCard({ variant, focus, progress, tagList, onChange }: Focus
     : !hasTag
       ? 'Link a technique tag to track progress.'
       : progress.total === 0
-        ? 'No sessions in the last 30 days yet.'
-        : `Tagged in ${progress.tagged} of your last ${progress.total} sessions`
+        ? 'No sessions this week yet.'
+        : `Tagged in ${progress.tagged} of ${progress.total} sessions this week`
   const pct = `${progress.pct}%`
 
   return (
     <section className={`card card--accent focus${variant === 'tech' ? ' focus--tech' : ''}`}>
       <div className="focus-head">
-        <div className="kicker kicker--accent">Focus this month</div>
+        <div className="kicker kicker--accent">Focus this week</div>
         <div className="focus-head-right">
           {variant === 'home' && hasTag && <div className="focus-pct">{pct}</div>}
           <button
@@ -49,7 +49,7 @@ export function FocusCard({ variant, focus, progress, tagList, onChange }: Focus
         </div>
       </div>
       <div className={`focus-title${hasGoal ? '' : ' focus-title--placeholder'}`}>
-        {hasGoal ? focus.title : 'Set a monthly focus'}
+        {hasGoal ? focus.title : 'Set a weekly focus'}
       </div>
       <div className="progress-track">
         <div className="progress-fill" style={{ width: pct }} />

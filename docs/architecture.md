@@ -25,12 +25,12 @@ Every file in `src/`, one responsibility each:
 | `src/components/TabBar.tsx` | Bottom nav: the `TABS` array (id/label/icon), renders the five tab buttons, `aria-current` on the active one. |
 | `src/components/Chip.tsx` | Toggle chip (`filter`/`dur`/`tech` size variants), `aria-pressed`. |
 | `src/components/Stepper.tsx` | +/− stepper button (`lg`/`sm`, optional accent). |
-| `src/components/SessionRow.tsx` | Session history row; summary includes whole duration/RPE when known, with an optional expanded accordion panel (subs, round length, tags). Root is a `<button>`, children are `<span>`s (valid HTML inside a button). |
+| `src/components/SessionRow.tsx` | Session history row; the right slot shows combined rounds (`sessionRounds` = rolls + specific), the summary includes whole duration/RPE when known, and an optional expanded accordion panel shows specific rounds, a condensed subs stat on historical rows only, round length, and tags. Root is a `<button>`, children are `<span>`s (valid HTML inside a button). |
 | `src/components/CompRow.tsx` | Competition history row, same accordion pattern; computes the W-L(-D) record, shows matches/cardio/notes when expanded. |
-| `src/components/FocusCard.tsx` | "Focus this month" card, shared by Home and Techniques (`variant` prop moves the % readout); pencil toggle opens the inline edit panel (title input + curriculum-ordered linked-tag picker). |
-| `src/screens/Home.tsx` | Dashboard: week hero + bars, streak and subs-30d cards, FocusCard, 3 most recent history entries, sync-status label. |
+| `src/components/FocusCard.tsx` | "Focus this week" card, shared by Home and Techniques (`variant` prop moves the % readout); pencil toggle opens the inline edit panel (title input + curriculum-ordered linked-tag picker). |
+| `src/screens/Home.tsx` | Dashboard: week hero + bars, streak and specific-rounds ("Specific · week") cards, FocusCard, 3 most recent history entries, sync-status label. |
 | `src/screens/Sessions.tsx` | Full history feed with Gi/No-Gi filter chips and the expand/collapse accordion. |
-| `src/screens/Log.tsx` | Both log forms: training (WhenCard, rounds, subs, whole duration, 1–5 RPE, tag chips + inline new-tag input) and competition (`CompFields`, `MatchEditor`, `WhenCard` lives here too as a private component). Owns `SCHEDULED_SLOTS` (19:30 / 20:30) and mirrors sync's `MAX_MATCHES=50` cap. |
+| `src/screens/Log.tsx` | Both log forms: training (WhenCard, rounds + specific steppers, whole duration, 1–5 RPE, tag chips + inline new-tag input) and competition (`CompFields`, `MatchEditor`, `WhenCard` lives here too as a private component). Owns `SCHEDULED_SLOTS` (19:30 / 20:30) and mirrors sync's `MAX_MATCHES=50` cap. |
 | `src/screens/Techniques.tsx` | 30-day most-worked bars + the all-tags cloud grouped by curriculum section, plus the FocusCard. |
 | `src/screens/Progress.tsx` | Streak ring, 12-week volume bars, year totals, milestones (gated on `settings.showMilestones`). |
 | `src/*.test.ts` | Vitest suites colocated with their subjects: `dates`, `stats`, `store`, `sync`, `curriculum`, `demo` (see [testing.md](testing.md)). |
@@ -69,7 +69,7 @@ The read-back path: `useSync` runs a `cycle()` (pull → merge → push-back) at
 `App` is the only stateful ancestor of the screens, so every App-level state change (data or hoisted UI state) re-renders `App` and its currently mounted screen; there is no memoized component boundary below it. (Component-local state — FocusCard `editing`, WhenCard's clock — re-renders only its own component.)
 
 - **Every keystroke in Log re-renders `App`** (form state is hoisted). The expensive derivation on that path — curriculum-ordering the tag list — is `useMemo`'d in `App` (`logTagList`, deps `data.tagList`/`data.sessions`), so keystrokes re-run only cheap JSX.
-- Screens guard their own per-interaction paths with `useMemo`: `Sessions` memoizes the filtered `historyFeed` (accordion toggles re-render the screen but not the feed computation), `Home` memoizes week/streak/subs/recent, `Techniques` memoizes counts + curriculum sections. `Progress` computes inline — it has no per-keystroke/per-toggle interactions, only data/`todayIso` changes.
+- Screens guard their own per-interaction paths with `useMemo`: `Sessions` memoizes the filtered `historyFeed` (accordion toggles re-render the screen but not the feed computation), `Home` memoizes week/streak/recent, `Techniques` memoizes counts + curriculum sections. `Progress` computes inline — it has no per-keystroke/per-toggle interactions, only data/`todayIso` changes.
 - `React.memo` on row components was **deliberately rejected**: it would force API churn (stable per-row handlers) and row render cost is negligible at realistic n. Do not add it reflexively.
 - Recurring re-renders: sync status transitions (a handful per cycle); the `WhenCard` clock every 30 s while the training log form is mounted; `useTodayIso` only at midnight (see bailout note above).
 

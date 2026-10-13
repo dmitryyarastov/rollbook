@@ -250,29 +250,6 @@
   color: var(--color-neutral-500);
   margin-top: 5px;
 }
-.subs-line {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 9px;
-}
-.subs-for {
-  font-weight: 500;
-  font-size: 26px;
-  line-height: 1;
-  color: var(--color-accent-300);
-}
-.subs-against {
-  font-weight: 500;
-  font-size: 26px;
-  line-height: 1;
-  color: var(--color-neutral-400);
-}
-.subs-l {
-  font-size: 12px;
-  line-height: 1;
-  color: var(--color-neutral-600);
-}
 
 /* ── Focus card ── */
 
@@ -490,9 +467,6 @@
   font-weight: 500;
   font-size: 16px;
   line-height: 1;
-}
-.srow-stat-n--for {
-  color: var(--color-accent-300);
 }
 .srow-stats .micro {
   display: block;
@@ -728,6 +702,30 @@
   background: var(--color-accent-800);
 }
 
+.spec-label {
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--color-neutral-500);
+  text-align: center;
+  margin-top: 16px;
+}
+.spec-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.spec-count {
+  font-weight: 500;
+  font-size: 30px;
+  line-height: 1;
+  min-width: 34px;
+  text-align: center;
+}
+
 .dur-row {
   display: flex;
   gap: 7px;
@@ -762,40 +760,6 @@
   color: var(--color-neutral-500);
 }
 
-.subs-split {
-  display: flex;
-  gap: 12px;
-  margin-top: 14px;
-}
-.subs-half {
-  flex: 1;
-  text-align: center;
-}
-.subs-half-label {
-  font-weight: 500;
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
-}
-.subs-half-label--for {
-  color: var(--color-accent-300);
-}
-.subs-half-label--against {
-  color: var(--color-neutral-500);
-}
-.subs-stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-.subs-count {
-  font-weight: 500;
-  font-size: 30px;
-  line-height: 1;
-  min-width: 34px;
-}
 .vdiv {
   width: 1px;
   background: linear-gradient(to bottom, transparent, var(--color-neutral-800) 30%, var(--color-neutral-800) 70%, transparent);

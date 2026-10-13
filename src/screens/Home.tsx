@@ -3,7 +3,7 @@ import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
 import { fmtToday } from '../dates'
-import { focusProgress, formatHours, historyFeed, streak, subs30d, weekSummary } from '../stats'
+import { focusProgress, formatHours, historyFeed, streak, weekSummary } from '../stats'
 import type { SyncStatus } from '../sync'
 import type { AppData, FocusGoal } from '../types'
 
@@ -26,16 +26,15 @@ interface HomeProps {
 
 export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
   const goal = data.settings.weeklyGoal
-  const { week, st, subs, recent } = useMemo(
+  const { week, st, recent } = useMemo(
     () => ({
       week: weekSummary(data.sessions, todayIso),
       st: streak(data.sessions, goal, todayIso),
-      subs: subs30d(data.sessions, todayIso),
       recent: historyFeed(data.sessions, data.competitions).slice(0, 3),
     }),
     [data.sessions, data.competitions, goal, todayIso],
   )
-  const maxBar = Math.max(...week.bars.map((b) => b.rolls), 1)
+  const maxBar = Math.max(...week.bars.map((b) => b.rounds), 1)
 
   return (
     <div className="screen">
@@ -52,7 +51,7 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
           <div>
             <div className="kicker">This week</div>
             <div className="hero-num-row">
-              <div className="hero-num">{week.rolls}</div>
+              <div className="hero-num">{week.rounds}</div>
               <div className="hero-cap">
                 rounds
                 <br />
@@ -75,8 +74,8 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
           {week.bars.map((b, i) => (
             <div key={i} className="weekbar">
               <div
-                className={`weekbar-fill${b.rolls > 0 ? ' weekbar-fill--on' : ''}`}
-                style={{ height: b.rolls > 0 ? 8 + (b.rolls / maxBar) * 40 : 4 }}
+                className={`weekbar-fill${b.rounds > 0 ? ' weekbar-fill--on' : ''}`}
+                style={{ height: b.rounds > 0 ? 8 + (b.rounds / maxBar) * 40 : 4 }}
               />
               <div className="weekbar-day">{b.day}</div>
             </div>
@@ -94,13 +93,12 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
           <div className="stat-note">training {goal}+ / week</div>
         </section>
         <section className="card stat-card">
-          <div className="kicker">Subs · 30d</div>
-          <div className="subs-line">
-            <span className="subs-for">{subs.subsFor}</span>
-            <span className="subs-l">for</span>
-            <span className="subs-against">{subs.subsAgainst}</span>
-            <span className="subs-l">against</span>
+          <div className="kicker">Specific · week</div>
+          <div className="stat-line">
+            <span className="stat-n">{week.specific}</span>
+            <span className="stat-u">rounds</span>
           </div>
+          <div className="stat-note">positional sparring</div>
         </section>
       </div>
 

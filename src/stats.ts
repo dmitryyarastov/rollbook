@@ -7,7 +7,9 @@ import type { Competition, Session } from './types'
 import { isOpenGuardTag } from './curriculum'
 import { addDays, dayOfYear, fmtShort, mondayOf, monthFull } from './dates'
 
-export const sessionMinutes = (s: Session) => s.rolls * s.roundMin
+/** Free sparring + positional ("specific") rounds — every round stat counts both. */
+export const sessionRounds = (s: Session) => s.rolls + s.specific
+export const sessionMinutes = (s: Session) => sessionRounds(s) * s.roundMin
 export const sessionHours = (s: Session) => sessionMinutes(s) / 60
 
 /** '3.2' below 10, '86' at 10 and above (matches the design's renderings). */
@@ -52,11 +54,14 @@ export function last30d(sessions: Session[], todayIso: string): Session[] {
 // ── This week ────────────────────────────────────────────────────────────────
 
 export interface WeekSummary {
-  rolls: number
+  /** Combined rolls + specific. */
+  rounds: number
+  /** Positional rounds alone (the Home "Specific · week" card). */
+  specific: number
   hours: number
   sessions: number
-  /** Mon..Sun */
-  bars: { day: string; rolls: number }[]
+  /** Mon..Sun, combined rounds. */
+  bars: { day: string; rounds: number }[]
 }
 
 export function weekSummary(sessions: Session[], todayIso: string): WeekSummary {
@@ -66,10 +71,11 @@ export function weekSummary(sessions: Session[], todayIso: string): WeekSummary 
   const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const bars = dayLetters.map((day, i) => {
     const date = addDays(mon, i)
-    return { day, rolls: inWeek.filter((s) => s.date === date).reduce((a, s) => a + s.rolls, 0) }
+    return { day, rounds: inWeek.filter((s) => s.date === date).reduce((a, s) => a + sessionRounds(s), 0) }
   })
   return {
-    rolls: inWeek.reduce((a, s) => a + s.rolls, 0),
+    rounds: inWeek.reduce((a, s) => a + sessionRounds(s), 0),
+    specific: inWeek.reduce((a, s) => a + s.specific, 0),
     hours: inWeek.reduce((a, s) => a + sessionHours(s), 0),
     sessions: inWeek.length,
     bars,
@@ -147,14 +153,6 @@ export function focusStreak(sessions: Session[], focusTag: string, todayIso: str
 
 // ── 30-day aggregates ────────────────────────────────────────────────────────
 
-export function subs30d(sessions: Session[], todayIso: string): { subsFor: number; subsAgainst: number } {
-  const pool = last30d(sessions, todayIso)
-  return {
-    subsFor: pool.reduce((a, s) => a + s.subsFor, 0),
-    subsAgainst: pool.reduce((a, s) => a + s.subsAgainst, 0),
-  }
-}
-
 /** Tag usage in the last 30 days, most-used first (name tiebreak). */
 export function tagCounts30d(sessions: Session[], todayIso: string): { name: string; n: number }[] {
   const m = new Map<string, number>()
@@ -191,8 +189,10 @@ export interface FocusProgress {
   total: number
 }
 
+/** Share of THIS week's sessions (Monday-start, through today) carrying the focus tag. */
 export function focusProgress(sessions: Session[], focusTag: string, todayIso: string): FocusProgress {
-  const pool = focusTag ? last30d(sessions, todayIso) : []
+  const mon = mondayOf(todayIso)
+  const pool = focusTag ? sessions.filter((s) => s.date >= mon && s.date <= todayIso) : []
   const tagged = pool.filter((s) => s.tags.includes(focusTag)).length
   return { pct: pool.length ? Math.round((100 * tagged) / pool.length) : 0, tagged, total: pool.length }
 }
@@ -205,7 +205,7 @@ export function volume12w(sessions: Session[], todayIso: string): number[] {
   return Array.from({ length: 12 }, (_, i) => {
     const mon = addDays(curMon, (i - 11) * 7)
     const end = addDays(mon, 6)
-    return sessions.filter((s) => s.date >= mon && s.date <= end).reduce((a, s) => a + s.rolls, 0)
+    return sessions.filter((s) => s.date >= mon && s.date <= end).reduce((a, s) => a + sessionRounds(s), 0)
   })
 }
 
@@ -214,7 +214,7 @@ export function yearTotals(sessions: Session[], todayIso: string): { hours: numb
   const pool = sessions.filter((s) => s.date.startsWith(year))
   return {
     hours: pool.reduce((a, s) => a + sessionHours(s), 0),
-    rolls: pool.reduce((a, s) => a + s.rolls, 0),
+    rolls: pool.reduce((a, s) => a + sessionRounds(s), 0),
   }
 }
 
@@ -271,8 +271,9 @@ export function yearMilestone(sessions: Session[], todayIso: string): Milestone 
   let cum = 0
   for (const s of sortByDateAsc(sessions)) {
     if (!s.date.startsWith(year)) continue
-    if (cum < YEAR_TARGET && cum + s.rolls >= YEAR_TARGET) return { achieved: true, title, sub: `Hit ${fmtShort(s.date)}` }
-    cum += s.rolls
+    const n = sessionRounds(s)
+    if (cum < YEAR_TARGET && cum + n >= YEAR_TARGET) return { achieved: true, title, sub: `Hit ${fmtShort(s.date)}` }
+    cum += n
   }
   let sub = `${cum} / ${YEAR_TARGET}`
   if (cum > 0) {

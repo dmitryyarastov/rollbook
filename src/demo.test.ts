@@ -4,7 +4,6 @@ import {
   focusProgress,
   milestones,
   streak,
-  subs30d,
   tagCounts30d,
   volume12w,
   weekSummary,
@@ -23,21 +22,17 @@ describe('demo seed (through the real stats functions)', () => {
 
   it('reproduces the handoff dashboard week: 18 rolls, 3 sessions, bars M4/W8/F6', () => {
     const w = weekSummary(sessions, TODAY)
-    expect(w.rolls).toBe(18)
+    expect(w.rounds).toBe(18)
     expect(w.sessions).toBe(3)
-    expect(w.bars.map((b) => b.rolls)).toEqual([4, 0, 8, 0, 6, 0, 0])
+    expect(w.bars.map((b) => b.rounds)).toEqual([4, 0, 8, 0, 6, 0, 0])
   })
 
   it('has an 11-week streak since May 18', () => {
     expect(streak(sessions, 2, TODAY)).toEqual({ weeks: 11, sinceIso: '2026-05-18' })
   })
 
-  it('shows 9 subs for / 12 against over 30 days', () => {
-    expect(subs30d(sessions, TODAY)).toEqual({ subsFor: 9, subsAgainst: 12 })
-  })
-
-  it('tags the focus in 7 of the last 11 sessions (64%)', () => {
-    expect(focusProgress(sessions, data.focus.tag, TODAY)).toEqual({ pct: 64, tagged: 7, total: 11 })
+  it("tags the focus in 1 of this week's 3 sessions (33%)", () => {
+    expect(focusProgress(sessions, data.focus.tag, TODAY)).toEqual({ pct: 33, tagged: 1, total: 3 })
   })
 
   it('ranks techniques with the focus tag on top', () => {

@@ -78,6 +78,15 @@ describe('load', () => {
     expect(load().sessions[0].updatedAt).toBe(100)
   })
 
+  it('backfills specific rounds to 0 for blobs from before the split', () => {
+    stubStorage(JSON.stringify({ sessions: [session] }))
+    expect(load().sessions[0].specific).toBe(0)
+    stubStorage(JSON.stringify({ sessions: [{ ...session, specific: 'junk' }] }))
+    expect(load().sessions[0].specific).toBe(0)
+    stubStorage(JSON.stringify({ sessions: [{ ...session, specific: 3 }] }))
+    expect(load().sessions[0].specific).toBe(3)
+  })
+
   it('backfills session time to null for blobs from before the picker', () => {
     stubStorage(JSON.stringify({ sessions: [session] }))
     expect(load().sessions[0].time).toBeNull()

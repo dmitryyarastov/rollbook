@@ -61,7 +61,10 @@ save real-looking test entries against the live backend.
    competition-aware exports are `historyFeed` (the render-only history
    interleave) and the goal milestones `medalMilestone`/`openGuardMilestone`
    (via `milestones`), which read competition placement/tags as goal
-   evidence — competitions must never influence streak/hours/rounds/subs.
+   evidence — competitions must never influence streak/hours/rounds. A
+   "round" everywhere means free rolls **plus** positional ("specific")
+   rounds: `sessionRounds(s) = rolls + specific` is the one definition every
+   round stat goes through (see docs/stats.md).
 3. **Sessions and competitions are append-only per id.** That is the only
    reason the blind full-table upsert push is safe. An edit or delete
    feature requires pull-before-every-push first (see docs/sync.md).
@@ -75,7 +78,8 @@ save real-looking test entries against the live backend.
 6. **Whitelists are triple-declared** — TS union (`types.ts`), pull
    sanitizer (`sync.ts`), SQL check (`supabase-schema.sql`) — and must stay
    in lockstep: `RoundMin`, `SessionIntensity`, `CardioRating`, the competition
-   `Placement`, the session `time` HH:MM regex, and the session-duration bounds.
+   `Placement`, the session `time` HH:MM regex, and the session-duration and
+   specific-round (0–1000) bounds.
 7. **Design is law** (see docs/design-system.md): Inter 400/500 only; accent
    `#9184d9` only as lines/borders/glows/text marks, never a large fill;
    outlined buttons; component CSS appended to `src/app.css` as ordered
@@ -94,6 +98,12 @@ save real-looking test entries against the live backend.
   logged the **morning after** — that's why `resolveWhen` maps a
   not-yet-passed picked time to yesterday, and why `LogForm.when` resets
   after each save while gi/roundMin stick.
+- `Session.subsFor`/`subsAgainst` are **historical fields**: submission
+  counting was retired from the UI in October 2026 (`saveSession` writes 0;
+  old rows still render a condensed subs stat). The positional "specific"
+  rounds stepper took its place in the Log form, and the focus card tracks
+  the **current week**, not a 30-day window — don't resurrect either old
+  behavior casually.
 - Tag ordering is display-time only; the persisted `tagList` is append-only
   master data. The GB curriculum mapping has three documented judgment calls
   (Escapes→side control, Half guard→guard, Darce→back & turtle) pinned by

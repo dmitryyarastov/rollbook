@@ -30,8 +30,7 @@ function useTodayIso(): string {
 
 const EMPTY_FORM: LogForm = {
   rolls: 0,
-  subsFor: 0,
-  subsAgainst: 0,
+  specific: 0,
   roundMin: 5,
   durationMin: 60,
   intensity: 3,
@@ -113,8 +112,10 @@ export default function App() {
       title: autoTitle(start),
       gi: form.gi,
       rolls: form.rolls,
-      subsFor: form.subsFor,
-      subsAgainst: form.subsAgainst,
+      specific: form.specific,
+      // Submission counting retired from the UI; historical rows keep theirs.
+      subsFor: 0,
+      subsAgainst: 0,
       roundMin: form.roundMin,
       durationMin: form.durationMin,
       intensity: form.intensity,
@@ -128,8 +129,7 @@ export default function App() {
     setForm((f) => ({
       ...f,
       rolls: 0,
-      subsFor: 0,
-      subsAgainst: 0,
+      specific: 0,
       durationMin: EMPTY_FORM.durationMin,
       intensity: EMPTY_FORM.intensity,
       tags: [],

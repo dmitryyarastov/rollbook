@@ -40,10 +40,15 @@ boundaries are the "what do I paste on an existing project" units. Current secti
 | Session start time (added 2026-08) | `sessions.time` column with HH:MM check | `add column if not exists` |
 | Competition placement + technique tags (added 2026-08) | `competitions.placement` column (default `'none'`, medal-value check) and `competitions.tags` `text[]` column | `add column if not exists` |
 | Whole-session duration + RPE (added 2026-09) | nullable `sessions.duration_min` integer (1–600) and `sessions.intensity` smallint (1–5) | `add column if not exists`; named constraints guarded through `pg_constraint` |
+| Specific (positional) rounds (added 2026-10) | `sessions.specific` integer `not null default 0` with a `between 0 and 1000` check — positional rounds logged beside free rolls; every round stat counts both | `add column if not exists` |
 
 Live status: `20260906065458_add_session_duration_intensity` was applied to project
 `rdhzcvmvtxnzittmclgr` on 6 Sep 2026 before the matching app deploy. The 17 historical
 session rows intentionally remain null for both fields; values are not backfilled by guess.
+The specific-rounds addendum must likewise run **before** deploying the October 2026 build
+that pushes the `specific` column — session pushes are strict (see the rule below); the
+column's `default 0` is also the correct value for every historical row, so no backfill
+question arises.
 
 Applying on an existing project: paste and run **just the new section** in the SQL
 editor. Applying on a fresh project: run the whole file top to bottom.

@@ -91,7 +91,8 @@ With no auth, every remote row is attacker-writable, so `pullAll` maps everythin
 | `created_at`, `updated_at` | `Date.parse`-able string, else **drop row** |
 | `title` | string, else `''` |
 | `gi` | `=== true`, else `false` |
-| `rolls`, `subs_for`, `subs_against` | `count()`: number-coerced, rounded, floored at 0 |
+| `rolls`, `subs_for`, `subs_against` | `count()`: number-coerced, rounded, floored at 0 (`subs_*` persist for historical rows only — the UI stopped counting 2026-10) |
+| `specific` | `count()` additionally capped at 1000 — `Math.min(1000, count(…))`, matching the SQL `specific between 0 and 1000` check |
 | `round_min` | must be in `[4, 5, 6, 8]` (`ROUND_MINS`), else `5` |
 | `duration_min` | integer 1–600, else `null` (legacy-compatible) |
 | `intensity` | must be in `[1, 2, 3, 4, 5]` (`SESSION_INTENSITIES`), else `null` |
@@ -118,7 +119,7 @@ The caps matter: `matches` is a jsonb column and `supabase-schema.sql` only chec
 | pull/push `sessions`, `app_state` | any non-ok | throw → `fail()` | strict |
 | any request | > 10 s | `AbortSignal.timeout` rejects → `fail()` | paused Supabase project hangs otherwise |
 
-A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s. A sessions push missing `duration_min`/`intensity` does the same, so each matching addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
+A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s. A sessions push missing `duration_min`/`intensity` or `specific` does the same, so each matching addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
 
 ## SyncStatus lifecycle
 
@@ -130,7 +131,7 @@ A missing **column** on an existing table is deliberately loud, not tolerated: P
 
 ## Playbook: adding a synced field to sessions
 
-Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; session `SessionIntensity` / `SESSION_INTENSITIES` / `intensity between 1 and 5`; competition `Placement`; and the matching `time` regex). Bounded numeric fields such as `duration_min` must match sanitizer and SQL bounds too. The September 2026 duration/RPE addendum is the latest worked example.
+Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; session `SessionIntensity` / `SESSION_INTENSITIES` / `intensity between 1 and 5`; competition `Placement`; and the matching `time` regex). Bounded numeric fields such as `duration_min` and `specific` must match sanitizer and SQL bounds too. The October 2026 specific-rounds addendum (`specific` integer, default 0, 0–1000 both in the sanitizer cap and the SQL check) is the latest worked example; September 2026's duration/RPE is the nullable-field variant.
 
 1. **`src/types.ts`** — add the field to `Session` (union type if it's an enum).
 2. **`src/store.ts` — `load`** — default the field for pre-existing localStorage blobs (as `time: typeof s.time === 'string' ? s.time : null` does).

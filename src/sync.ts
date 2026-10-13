@@ -39,6 +39,7 @@ interface SessionRow {
   title: string
   gi: boolean
   rolls: number
+  specific: number
   subs_for: number
   subs_against: number
   round_min: number
@@ -58,6 +59,7 @@ export function toRow(s: Session): SessionRow {
     title: s.title,
     gi: s.gi,
     rolls: s.rolls,
+    specific: s.specific,
     subs_for: s.subsFor,
     subs_against: s.subsAgainst,
     round_min: s.roundMin,
@@ -101,6 +103,7 @@ export function fromRow(r: unknown): Session | null {
     title: typeof o.title === 'string' ? o.title : '',
     gi: o.gi === true,
     rolls: count(o.rolls),
+    specific: Math.min(1000, count(o.specific)),
     subsFor: count(o.subs_for),
     subsAgainst: count(o.subs_against),
     roundMin,

@@ -159,6 +159,7 @@ export function demoData(todayIso: string): AppData {
       title: spec.title,
       gi: spec.gi,
       rolls: spec.rolls,
+      specific: 0,
       subsFor: spec.sf,
       subsAgainst: spec.sa,
       roundMin: spec.dur,

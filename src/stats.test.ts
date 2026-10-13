@@ -12,8 +12,8 @@ import {
   openGuardMilestone,
   withSessionTags,
   sortByDateDesc,
+  sessionRounds,
   streak,
-  subs30d,
   volume12w,
   weekSummary,
   yearMilestone,
@@ -33,6 +33,7 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     title: 'Test',
     gi: true,
     rolls: 5,
+    specific: 0,
     subsFor: 0,
     subsAgainst: 0,
     roundMin: 5,
@@ -66,23 +67,26 @@ function mkComp(date: string, extra: Partial<Competition> = {}): Competition {
 describe('weekSummary', () => {
   it('is all zeros with no sessions', () => {
     const w = weekSummary([], TODAY)
-    expect(w.rolls).toBe(0)
+    expect(w.rounds).toBe(0)
+    expect(w.specific).toBe(0)
     expect(w.sessions).toBe(0)
-    expect(w.bars.map((b) => b.rolls)).toEqual([0, 0, 0, 0, 0, 0, 0])
+    expect(w.bars.map((b) => b.rounds)).toEqual([0, 0, 0, 0, 0, 0, 0])
   })
 
-  it('sums the current Monday-Sunday week per day', () => {
+  it('sums the current Monday-Sunday week per day, specific rounds included', () => {
     const sessions = [
       mk('2026-07-27', { rolls: 4 }), // Mon
-      mk('2026-07-29', { rolls: 8, roundMin: 6 }), // Wed
+      mk('2026-07-29', { rolls: 6, specific: 2, roundMin: 6 }), // Wed — 8 combined
       mk('2026-07-31', { rolls: 6 }), // Fri
       mk('2026-07-26', { rolls: 9 }), // previous Sunday — excluded
     ]
     const w = weekSummary(sessions, TODAY)
-    expect(w.rolls).toBe(18)
+    expect(w.rounds).toBe(18)
+    expect(w.specific).toBe(2)
     expect(w.sessions).toBe(3)
-    expect(w.bars.map((b) => b.rolls)).toEqual([4, 0, 8, 0, 6, 0, 0])
+    expect(w.bars.map((b) => b.rounds)).toEqual([4, 0, 8, 0, 6, 0, 0])
     expect(formatHours(w.hours)).toBe('1.6') // 4*5 + 8*6 + 6*5 = 98 min
+    expect(sessionRounds(sessions[1])).toBe(8)
   })
 })
 
@@ -114,20 +118,30 @@ describe('streak', () => {
 
 describe('30-day window', () => {
   it('includes day -29 and excludes day -30', () => {
-    const edgeIn = mk('2026-07-04', { subsFor: 1 })
-    const edgeOut = mk('2026-07-03', { subsFor: 1 })
+    const edgeIn = mk('2026-07-04')
+    const edgeOut = mk('2026-07-03')
     expect(last30d([edgeIn, edgeOut], TODAY)).toEqual([edgeIn])
-    expect(subs30d([edgeIn, edgeOut], TODAY).subsFor).toBe(1)
   })
+})
 
-  it('computes focus progress over the window', () => {
+describe('focusProgress (current week)', () => {
+  it('measures only this Monday-start week', () => {
     const s = [
       mk('2026-08-01', { tags: ['Guard retention'] }),
       mk('2026-07-30', { tags: ['Kimura'] }),
       mk('2026-07-28', { tags: ['Guard retention', 'Sweeps'] }),
+      mk('2026-07-26', { tags: ['Guard retention'] }), // previous week — excluded
     ]
     expect(focusProgress(s, 'Guard retention', TODAY)).toEqual({ pct: 67, tagged: 2, total: 3 })
     expect(focusProgress(s, '', TODAY)).toEqual({ pct: 0, tagged: 0, total: 0 })
+  })
+
+  it('is empty with no sessions this week', () => {
+    expect(focusProgress([mk('2026-07-26', { tags: ['Kimura'] })], 'Kimura', TODAY)).toEqual({
+      pct: 0,
+      tagged: 0,
+      total: 0,
+    })
   })
 })
 
@@ -143,6 +157,12 @@ describe('volume and year totals', () => {
     expect(v[11]).toBe(3)
     expect(v[0]).toBe(7)
     expect(v.reduce((a, b) => a + b)).toBe(10)
+  })
+
+  it('counts specific rounds into volume and year totals', () => {
+    const s = [mk('2026-07-27', { rolls: 3, specific: 2 })]
+    expect(volume12w(s, TODAY)[11]).toBe(5)
+    expect(yearTotals(s, TODAY).rolls).toBe(5)
   })
 
   it('sums the calendar year only', () => {
