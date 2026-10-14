@@ -57,20 +57,22 @@ All component CSS lives in `src/app.css` as **ordered sections** delimited by `/
 2. `Type` — `.screen-title`, `.screen-sub`, `.kicker`, `.section-label`, `.micro`, `.empty`, `.section-head`, `.label-row`, `.link`
 3. `Cards` — `.card`, `.card--lg`, `.card--accent`
 4. `Home: header` — `.home-head`, `.home-title`, `.home-date`, `.sync-note`
-5. `Home: hero card` — `.hero`, `.hero-num`, `.weekbars`
-6. `Stat cards` — `.stat-row`, `.stat-card` (both Home stat cards — Streak and Specific · week — share `.stat-line`/`.stat-n`/`.stat-u`/`.stat-note`; the old `.subs-line` block left with the Subs card, 2026-10)
-7. `Focus card` — `.focus`, `.progress-track`, `.icon-btn`, `.focus-panel`, `.field-label`, `.input`
-8. `Session rows` — `.slist`, `.srow`, `.srow-badge`, `.srow-panel`, `.tagchip`
-9. `Competition rows` — `.srow-badge--comp`, `.crow-*`
-10. `Chips (filters, durations, technique toggles)` — `.chips`, `.chip`, `.chip-input`
-11. `Log screen` — `.log-stack`, `.log-card`, `.stepper-row`, `.step`, `.spec-label`/`.spec-stepper`/`.spec-count`, `.dur-row`, `.dur-cap`, `.vdiv`, `.save-btn`, `.saved-msg` (`.vdiv` survives the removed subs card — the match-points editor still uses it; `.subs-split` and friends went with the Submissions card, 2026-10)
-12. `Log: when (session start)` — `.when-row`, `.input--time`
-13. `Log: competition mode` — `.log-mode`, `.match`, `.match-*`, `.input--sm`, `.input--area`
-14. `Techniques screen` — `.trows`, `.trow`, `.tag-cloud`, `.tagstat`
-15. `Techniques: curriculum groups` — `.cloud-group`, `.cloud-group-label`
-16. `Progress: streak flames` — `.frow`, `.frow-flame`, `.frow-n`, `.frow-label`, `.frow--cold`
-17. `Progress screen` — `.streak-card`, `.ring`, `.vol-card`, `.mrows`
-18. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
+5. `Home: level` — `.level-row`, `.level-chip`, `.level-track`, `.level-fill`, `.level-xp` (the track/fill pair is also reused by the Progress characteristic cards)
+6. `Home: hero card` — `.hero`, `.hero-num`, `.weekbars`
+7. `Stat cards` — `.stat-row`, `.stat-card` (both Home stat cards — Streak and Specific · week — share `.stat-line`/`.stat-n`/`.stat-u`/`.stat-note`, as do the Progress XP tiles; the old `.subs-line` block left with the Subs card, 2026-10)
+8. `Focus card` — `.focus`, `.progress-track`, `.icon-btn`, `.focus-panel`, `.field-label`, `.input`
+9. `Session rows` — `.slist`, `.srow`, `.srow-badge`, `.srow-panel`, `.tagchip`
+10. `Competition rows` — `.srow-badge--comp`, `.crow-*`
+11. `Chips (filters, durations, technique toggles)` — `.chips`, `.chip`, `.chip-input`
+12. `Log screen` — `.log-stack`, `.log-card`, `.stepper-row`, `.step`, `.spec-label`/`.spec-stepper`/`.spec-count`, `.dur-row`, `.dur-cap`, `.vdiv`, `.save-btn`, `.saved-msg` (`.vdiv` survives the removed subs card — the match-points editor still uses it; `.subs-split` and friends went with the Submissions card, 2026-10)
+13. `Log: when (session start)` — `.when-row`, `.input--time`
+14. `Log: competition mode` — `.log-mode`, `.match`, `.match-*`, `.input--sm`, `.input--area`
+15. `Techniques screen` — `.trows`, `.trow`, `.tag-cloud`, `.tagstat`
+16. `Techniques: curriculum groups` — `.cloud-group`, `.cloud-group-label`
+17. `Progress: XP + characteristics` — `.stat-n--xp`, `.xp-card`, `.xp-spark`, `.crow-char` + `-head`/`-label`/`-lv`/`-xp` and `--idle` (the characteristic cards; they reuse `.level-track`/`.level-fill` from `Home: level`)
+18. `Progress: streak flames` — `.frow`, `.frow-flame`, `.frow-n`, `.frow-label`, `.frow-best`, `.frow--cold`
+19. `Progress screen` — `.streak-card`, `.ring`, `.vol-card`, `.mrows`
+20. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
 
 **Where a new section goes:** shared primitives extend an existing early section (Type/Cards/Chips); a screen-specific block goes adjacent to its screen's existing sections, sub-scoped with a `Screen: feature` title (the pattern set by `Log: when` and `Techniques: curriculum groups`). The tab bar stays last. Never scatter a component's rules across sections.
 
@@ -80,7 +82,7 @@ Hover states are always wrapped in `@media (hover: hover)` (touch devices must n
 
 - Block: `.chip`, `.srow`, `.match`. Element: single hyphen, `.srow-title`, `.match-head` (not BEM's `__`). Modifier: double hyphen, `.chip--on`, `.srow--open`, `.card--lg`, `.trow-fill--first`.
 - Modifiers are applied **alongside** the base class in JSX (`className={`card srow${expanded ? ' srow--open' : ''}`}`), composed by string concatenation — there is no classnames library and none should be added.
-- Prefixes group by screen where classes are screen-local: `srow-`/`crow-` (history rows), `log-`, `match-`, `trow-`, `vol-`, `mrow-`, `hero-`, `focus-`.
+- Prefixes group by screen where classes are screen-local: `srow-`/`crow-` (history rows), `log-`, `match-`, `trow-`, `vol-`, `mrow-`, `hero-`, `focus-`, `level-` (the shared XP-level grammar), `xp-` (the Progress Experience card). Caveat: `.crow-char*` is the Progress **characteristic** card block, not a competition row — the `crow-char` compound is its block name.
 
 ## Component contracts
 
@@ -134,13 +136,15 @@ The `TABS` array is the registration point: `{ id: Tab; label; icon?: Icon }`. *
 
 **dur-row / dur-cap** — a centered row of `dur`-variant chips with a single 11px neutral-600 caption below (`.dur-cap`). Used for round length ("round length"), session RPE ("1 easy · 5 maximal"), cardio ("cardio — 1 fine · 5 gassed"), the comp form's podium placement chips ("podium" — None/Bronze/Silver/Gold, single-select), and the When picker's live today/yesterday caption. This is the house pattern for "small option row + explanatory caption".
 
-**Flame streak rows** — `.frow` (Progress "Streaks" section): a `card` row of Phosphor Flame (size 16) + `.frow-n` ("×{weeks}", 500-weight) + 13px neutral-300 `.frow-label`. Hot rows fill the flame (`weight="fill"`, `accent-300` — an icon as text mark, within accent rule 2); a zero-week row adds `.frow--cold` (regular-weight flame in `neutral-600`, count in `neutral-500`). One row per streak variant from `src/stats.ts` (see [stats.md](stats.md)); rows stack inside `.mrows` with an 8px `.frow + .frow` gap.
+**Flame streak rows** — `.frow` (Progress "Streaks" section): a `card` row of Phosphor Flame (size 16) + `.frow-n` ("×{weeks}", 500-weight) + 13px neutral-300 `.frow-label` (flexed to fill the row). Hot rows fill the flame (`weight="fill"`, `accent-300` — an icon as text mark, within accent rule 2); a zero-week row adds `.frow--cold` (regular-weight flame in `neutral-600`, count in `neutral-500`). A trailing `.frow-best` (11px neutral-600, "best ×{N}" from `bestWeeklyStreak`) appears **only when the all-history best exceeds the live streak** — never as a redundant echo of the current run. One row per streak variant from `src/stats.ts` (see [stats.md](stats.md)); rows stack inside `.mrows` with an 8px `.frow + .frow` gap.
+
+**Level rows** — the XP-level grammar, shared by Home's `.level-row` (under the header) and the Progress characteristic cards (`.crow-char`): a `.level-chip` ("LV {n}", 11px 500-weight, 0.08em tracking, `accent-300` text — the same register as a kicker, accent as text mark), a `.level-track`/`.level-fill` pair (3px accent progress line over the canonical `neutral-900` empty-track token — a line, within accent rule 2; same idiom as the FocusCard's `.progress-fill`), and a 10px neutral-500 "into / need XP" micro line (`.level-xp` on Home, `.crow-char-xp` right-aligned on the cards). A characteristic card at 0 XP adds `.crow-char--idle`, which demotes its LV chip to `neutral-600` — levels only light up once earned. The four Progress XP tiles reuse the Home stat-card anatomy (`.stat-row`/`.stat-card`/`.kicker`/`.stat-n`); only the "XP today" number takes `.stat-n--xp` (`accent-300`) — today is "mine/now", the year aggregates stay neutral.
 
 **The `.input` family** — `.input` is the base (bg `--color-bg`, neutral-700 border, accent caret, accent border on focus, and the mandatory `font-family: inherit`). Modifiers: `.input--sm` (compact, match submission field), `.input--area` (textarea: `resize: none`, min-height 64px), `.input--time` (native `type="time"`: auto width and **`color-scheme: dark`**, without which the browser renders a light-themed time control — keep this on any future native date/time input). `.chip-input` is the separate chip-shaped text input for inline tag creation.
 
 **Numbers over captions** — big 500-weight number, tiny muted caption below, everywhere: hero, stat cards, `.srow-rolls`/ROUNDS, `.srow-stat-n`/micro, `.ring-n`/WEEKS, `.crow-cardio-n`/CARDIO.
 
-**Bar charts are divs** — `.weekbar-fill`, `.vol-fill`, `.trow-fill` with inline `style={{ height }}` or `width` computed in the component against the series max; track = neutral-900, emphasis fill = accent-500 (current/first), secondary = accent-700, default = accent-800. Minimum heights keep zero values visible (4px/2px stubs). No chart library; don't add one.
+**Bar charts are divs** — `.weekbar-fill`, `.vol-fill`, `.trow-fill` with inline `style={{ height }}` or `width` computed in the component against the series max; track = neutral-900, emphasis fill = accent-500 (current/first), secondary = accent-700, default = accent-800. Minimum heights keep zero values visible (4px/2px stubs). The one line chart — the year-XP sparkline (`XpSparkline` in `src/screens/Progress.tsx`, `.xp-spark` inside `.xp-card`) — is a hand-rolled inline `<svg>` polyline, `stroke: var(--color-accent)` at 1.5px (a line mark, within accent rule 2), `preserveAspectRatio="none"` with `role="img"` + `aria-label`; its Jan/Dec axis row reuses `.vol-x`. No chart library; don't add one.
 
 **Empty-state voice** — `.empty` (13px neutral-500), one sentence, em-dash pivot to the action, no illustrations, no exclamation marks: "No sessions yet — hit the + tab after class." / "No matches yet — add your first below." / "Tag techniques when you log sessions to see them here." Screen subtitles share the terse-encouraging register ("30 seconds now — details optional, later.", "Consistency beats intensity."). The save confirmation is `.saved-msg`: "Session saved — nice work." Match this voice for any new empty/confirmation copy.
 

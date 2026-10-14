@@ -43,6 +43,7 @@ export function load(): AppData {
       sessions: (Array.isArray(parsed.sessions) ? parsed.sessions : base.sessions).map((s) => ({
         ...s,
         updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : s.createdAt,
+        rolls: typeof s.rolls === 'number' && Number.isInteger(s.rolls) && s.rolls >= 0 && s.rolls <= 1000 ? s.rolls : 0,
         specific:
           typeof s.specific === 'number' && Number.isInteger(s.specific) && s.specific >= 0 && s.specific <= 1000
             ? s.specific

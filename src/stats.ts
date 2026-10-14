@@ -135,6 +135,31 @@ export function weeklyStreak(
   return { weeks, sinceIso }
 }
 
+/**
+ * The longest qualifying run across the whole history (the "best ×N" shown
+ * beside each flame): walks every week from the earliest logged one through
+ * the current week. The unfinished current week extends a run when it already
+ * qualifies but never breaks the best (a mid-week dip only ends the tail run).
+ */
+export function bestWeeklyStreak(
+  sessions: Session[],
+  todayIso: string,
+  qualifies: (week: Session[]) => boolean,
+): number {
+  const byWeek = sessionsByWeek(sessions)
+  if (byWeek.size === 0) return 0
+  const curMon = mondayOf(todayIso)
+  let earliest = curMon
+  for (const k of byWeek.keys()) if (k < earliest) earliest = k
+  let best = 0
+  let run = 0
+  for (let w = earliest; w <= curMon; w = addDays(w, 7)) {
+    run = qualifies(byWeek.get(w) ?? []) ? run + 1 : 0
+    if (run > best) best = run
+  }
+  return best
+}
+
 /** Consecutive weeks with at least `goal` sessions (the original streak). */
 export function streak(sessions: Session[], goal: number, todayIso: string): Streak {
   return weeklyStreak(sessions, todayIso, (week) => week.length >= goal)

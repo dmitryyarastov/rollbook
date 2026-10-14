@@ -1,7 +1,18 @@
 import { Check, DotsThree, Flame } from '@phosphor-icons/react'
+import { useMemo } from 'react'
 import { fmtShort } from '../dates'
-import { focusStreak, formatHours, giNoGiStreak, milestones, streak, volume12w, yearTotals } from '../stats'
-import type { AppData } from '../types'
+import {
+  bestWeeklyStreak,
+  focusStreak,
+  formatHours,
+  giNoGiStreak,
+  milestones,
+  streak,
+  volume12w,
+  yearTotals,
+} from '../stats'
+import type { AppData, Session } from '../types'
+import { characteristics, yearXp } from '../xp'
 
 interface ProgressProps {
   data: AppData
@@ -14,14 +25,32 @@ export function Progress({ data, todayIso }: ProgressProps) {
   const vol = volume12w(data.sessions, todayIso)
   const maxVol = Math.max(...vol, 1)
   const year = yearTotals(data.sessions, todayIso)
-  const flames = [
-    { label: `Training — ${goal}+ sessions / week`, n: st.weeks },
-    { label: 'Gi + No-Gi in the same week', n: giNoGiStreak(data.sessions, todayIso).weeks },
-    {
-      label: data.focus.tag ? `Focus work — ${data.focus.tag}` : 'Focus work — set a focus tag',
-      n: focusStreak(data.sessions, data.focus.tag, todayIso).weeks,
-    },
-  ]
+  const { flames, xp, chars } = useMemo(() => {
+    const trains = (week: Session[]) => week.length >= goal
+    const mixes = (week: Session[]) => week.some((s) => s.gi) && week.some((s) => !s.gi)
+    const focuses = (week: Session[]) => data.focus.tag !== '' && week.some((s) => s.tags.includes(data.focus.tag))
+    return {
+      flames: [
+        {
+          label: `Training — ${goal}+ sessions / week`,
+          n: st.weeks,
+          best: bestWeeklyStreak(data.sessions, todayIso, trains),
+        },
+        {
+          label: 'Gi + No-Gi in the same week',
+          n: giNoGiStreak(data.sessions, todayIso).weeks,
+          best: bestWeeklyStreak(data.sessions, todayIso, mixes),
+        },
+        {
+          label: data.focus.tag ? `Focus work — ${data.focus.tag}` : 'Focus work — set a focus tag',
+          n: focusStreak(data.sessions, data.focus.tag, todayIso).weeks,
+          best: bestWeeklyStreak(data.sessions, todayIso, focuses),
+        },
+      ],
+      xp: yearXp(data.sessions, data.competitions, todayIso),
+      chars: characteristics(data.sessions, data.competitions),
+    }
+  }, [data.sessions, data.competitions, data.focus.tag, goal, st.weeks, todayIso])
 
   return (
     <div className="screen">
@@ -72,6 +101,7 @@ export function Progress({ data, todayIso }: ProgressProps) {
             </div>
             <div className="frow-n">×{f.n}</div>
             <div className="frow-label">{f.label}</div>
+            {f.best > f.n && <div className="frow-best">best ×{f.best}</div>}
           </div>
         ))}
       </div>
@@ -93,6 +123,61 @@ export function Progress({ data, todayIso }: ProgressProps) {
         </section>
       </div>
 
+      <div className="section-label label-row">Experience</div>
+      <div className="stat-row">
+        <section className="card stat-card">
+          <div className="kicker">XP today</div>
+          <div className="stat-line">
+            <span className="stat-n stat-n--xp">+{xp.today}</span>
+          </div>
+        </section>
+        <section className="card stat-card">
+          <div className="kicker">This year</div>
+          <div className="stat-line">
+            <span className="stat-n">+{xp.year}</span>
+          </div>
+        </section>
+      </div>
+      <div className="stat-row">
+        <section className="card stat-card">
+          <div className="kicker">Best day</div>
+          <div className="stat-line">
+            <span className="stat-n">+{xp.bestDay}</span>
+          </div>
+        </section>
+        <section className="card stat-card">
+          <div className="kicker">Avg / day</div>
+          <div className="stat-line">
+            <span className="stat-n">+{xp.avgPerDay}</span>
+          </div>
+        </section>
+      </div>
+      <section className="card xp-card">
+        <XpSparkline byDay={xp.byDay} />
+        <div className="vol-x">
+          <span>Jan</span>
+          <span>Dec</span>
+        </div>
+      </section>
+
+      <div className="section-label label-row">Characteristics</div>
+      <div className="mrows">
+        {chars.map((c) => (
+          <div key={c.id} className={`card crow-char${c.xp > 0 ? '' : ' crow-char--idle'}`}>
+            <div className="crow-char-head">
+              <span className="crow-char-label">{c.label}</span>
+              <span className="crow-char-lv">LV {c.level}</span>
+            </div>
+            <div className="level-track">
+              <span className="level-fill" style={{ width: `${Math.round((100 * c.into) / c.need)}%` }} />
+            </div>
+            <div className="crow-char-xp">
+              {c.into} / {c.need} XP
+            </div>
+          </div>
+        ))}
+      </div>
+
       {data.settings.showMilestones && (
         <div>
           <div className="section-label label-row">Milestones</div>
@@ -112,5 +197,20 @@ export function Progress({ data, todayIso }: ProgressProps) {
         </div>
       )}
     </div>
+  )
+}
+
+/** Year XP as a single polyline — the quiet cousin of RPGreal's XP chart. */
+function XpSparkline({ byDay }: { byDay: number[] }) {
+  const W = 320
+  const H = 72
+  const max = Math.max(...byDay, 1)
+  const points = byDay
+    .map((v, i) => `${((i / (byDay.length - 1)) * W).toFixed(1)},${(H - 4 - (v / max) * (H - 8)).toFixed(1)}`)
+    .join(' ')
+  return (
+    <svg className="xp-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="XP per day this year">
+      <polyline points={points} fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
   )
 }

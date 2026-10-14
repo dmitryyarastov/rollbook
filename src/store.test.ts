@@ -78,6 +78,15 @@ describe('load', () => {
     expect(load().sessions[0].updatedAt).toBe(100)
   })
 
+  it('clamps corrupted rolls (an Infinity blob must not freeze the level math)', () => {
+    stubStorage(JSON.stringify({ sessions: [{ ...session, rolls: 1e309 }] }))
+    expect(load().sessions[0].rolls).toBe(0)
+    stubStorage(JSON.stringify({ sessions: [{ ...session, rolls: -3 }] }))
+    expect(load().sessions[0].rolls).toBe(0)
+    stubStorage(JSON.stringify({ sessions: [session] }))
+    expect(load().sessions[0].rolls).toBe(4)
+  })
+
   it('backfills specific rounds to 0 for blobs from before the split', () => {
     stubStorage(JSON.stringify({ sessions: [session] }))
     expect(load().sessions[0].specific).toBe(0)

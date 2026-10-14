@@ -1,6 +1,6 @@
 # Curriculum ordering
 
-`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure module with two jobs: display-time tag ordering — it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order — and the open-guard tag whitelist behind the competition milestone (`isOpenGuardTag`, below).
+`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure module with two jobs: display-time tag ordering — it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order — and the open-guard tag whitelist behind the competition milestone (`isOpenGuardTag`, below). A third consumer has since attached to `groupOfTag`: the characteristic matchers in `src/xp.ts` (see "Beyond ordering" below and [stats.md](stats.md)).
 
 ## GB curriculum research (why the module looks like this)
 
@@ -61,7 +61,7 @@ All of these are pure and cheap; callers memoize the ordering functions where th
 | If you change | You must also change |
 |---|---|
 | `CURRICULUM_GROUPS` order, ids, or labels | Pinned sequence + section-label tests in `src/curriculum.test.ts`; `CurriculumGroupId` union |
-| `TAG_GROUP` entries | `REAL_TAGS` ordering fixture and judgment-call tests in `src/curriculum.test.ts` |
+| `TAG_GROUP` entries | `REAL_TAGS` ordering fixture and judgment-call tests in `src/curriculum.test.ts`; characteristic XP in `src/xp.ts` — the `passing`, `standing` (takedowns-gi / wrestling-nogi), and `legs` matchers read `groupOfTag`, so moving a tag between those groups silently moves its lifetime XP (`src/xp.test.ts`, [stats.md](stats.md)) |
 | `DEFAULT_TAGS` in `src/store.ts` (add a tag) | Add a `TAG_GROUP` entry, or the never-`other` test fails |
 | `groupOfTag` normalization | Key format of every `TAG_GROUP` entry (they must stay pre-normalized) |
 | `OPEN_GUARD_TAGS` / `isOpenGuardTag` | `openGuardMilestone` behavior and its tests in `src/stats.test.ts` ([stats.md](stats.md)); entries must stay pre-normalized like `TAG_GROUP` keys |
@@ -73,3 +73,7 @@ All of these are pure and cheap; callers memoize the ordering functions where th
 - **Techniques grouped cloud** — `src/screens/Techniques.tsx` uses `groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions))` inside its `useMemo`, rendering one `cloud-group` block per section with the section `label` as the header (styles in `src/app.css`, see [design-system.md](design-system.md)).
 
 **Not applied to persisted data.** `data.tagList` order is untouched everywhere: `addTag` in `src/App.tsx` appends; sync ([sync.md](sync.md)) pushes the array verbatim and never reorders it on pull (the pull sanitizer only type-filters entries, falling back to the local list when empty). Curriculum ordering is a lens over master data, never a write.
+
+## Beyond ordering: the XP characteristic matchers
+
+`src/xp.ts — CHARACTERISTICS` matches session/comp tags through `groupOfTag` for four of the six lifelong attributes: `passing` (the `passing` group), `takedowns-gi` / `wrestling-nogi` (the `standing` group, split by the entry's `gi` flag), and `leglocks` (the `legs` group). The other two matchers — guard retention and top control — keep their own exact-tag whitelists inside `src/xp.ts` (same no-heuristics policy as `TAG_GROUP`: pre-normalized exact membership, spelling variants as separate entries, extend the set, never fuzz the match). The coupling is live in both directions of intent: extending `TAG_GROUP` so a new tag orders correctly **also** enrolls it in the matching characteristic — usually what's wanted, but check `src/xp.test.ts` when the group is `passing`/`standing`/`legs` ([stats.md](stats.md)).

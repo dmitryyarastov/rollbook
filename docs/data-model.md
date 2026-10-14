@@ -1,6 +1,6 @@
 # Data model
 
-All persistent state is one `AppData` object (src/types.ts — `AppData`) held in React state and mirrored to a single localStorage key. localStorage is the UI's source of truth; remote sync (see [sync.md](sync.md)) is background convenience and never authoritative for deletions. Every type below lives in src/types.ts unless noted.
+All persistent state is one `AppData` object (src/types.ts — `AppData`) held in React state and mirrored to a single localStorage key. localStorage is the UI's source of truth; remote sync (see [sync.md](sync.md)) is background convenience and never authoritative for deletions. Every type below lives in src/types.ts unless noted. The XP/level/characteristics system deliberately adds **nothing** here — it is a pure derivation from the sessions/competitions below (src/xp.ts, see [stats.md](stats.md)): no stored XP, no new fields, no sync or migration surface.
 
 ## Core invariants (read first)
 

@@ -108,6 +108,15 @@ save real-looking test entries against the live backend.
   master data. The GB curriculum mapping has three documented judgment calls
   (Escapes→side control, Half guard→guard, Darce→back & turtle) pinned by
   tests — don't "fix" them casually.
+- The six characteristics in `src/xp.ts` (passing, guard retention,
+  takedowns-gi, wrestling-nogi, leg locks, top control) are the owner's
+  chosen **lifelong attribute set** — the SET is fixed by design (an RPG
+  character sheet he upgrades across his whole BJJ journey, deliberately his
+  standing motivation); only the tag matchers may grow. XP/levels store
+  nothing — pure derivations from logged history — and the formulas are
+  pinned by `xp.test.ts`; changing one silently recomputes every level
+  across all history, so change deliberately, never casually (see
+  docs/stats.md).
 - The UI recreates a high-fidelity handoff (`~/Downloads/design_handoff_rollbook/`,
   may not exist on every machine — `src/app.css` is the faithful transcription).
 - Sessions logged before the When picker existed may carry morning-shifted

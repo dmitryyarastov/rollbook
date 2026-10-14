@@ -23,7 +23,7 @@ with [CLAUDE.md](CLAUDE.md) as the entry point and invariants digest.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # vitest — dates/stats/curriculum/store/sync/demo suites
+npm test           # vitest — dates/stats/xp/curriculum/store/sync/demo suites
 npm run build      # typecheck + production build + SW precache injection
 npm run preview    # serve the production build
 npm run icons      # regenerate public/icons PNGs from the SVG mark (sharp)
@@ -75,9 +75,9 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
 - No login yet (single hardcoded user). The schema is shaped so adding real
   auth later is a policy swap — see the notes at the bottom of the SQL file.
 
-## How the numbers are computed (`src/stats.ts`)
+## How the numbers are computed (`src/stats.ts`, `src/xp.ts`)
 
-Everything on screen derives from stored sessions — pure functions, all
+Everything on screen derives from the stored history — pure functions, all
 parameterized by a local-date `todayIso` and covered by tests:
 
 - **Weeks are Monday–Sunday**, in the device's timezone. Local date math
@@ -94,6 +94,21 @@ parameterized by a local-date `todayIso` and covered by tests:
   it qualifies (an unfinished week never breaks a streak). Three flame rows
   on Progress: ≥ `weeklyGoal` sessions a week, at least one gi and one no-gi
   session in the same week, and a session tagged the focus tag each week.
+  Each row also shows a muted "best ×N" — the longest run anywhere in
+  history — but only when it beats the current one.
+- **XP and levels** (`src/xp.ts`) are derived the same way — recomputed from
+  history, nothing stored. A session earns `20 + 5 × rounds`; a competition
+  `150 + 40 × match + 60 × win` plus a podium bonus (200/350/600). The
+  character level on Home runs on linearly growing level costs
+  (100, 150, 200, …); the Experience section on Progress shows XP today /
+  this year / best day / average per day plus a year sparkline.
+- **Characteristics** are six fixed lifelong attributes — passing, guard
+  retention, takedowns (gi), wrestling (no-gi), leg locks, top control —
+  that level up (on a faster 50/25 curve) from a flat 25 XP per session or
+  60 per competition whose tags touch them. Flat per entry, so tagging one
+  session ten ways doesn't grind; the standing group splits by the session's
+  gi flag, and escapes deliberately don't count as top control. The set is
+  fixed by design; only the tag matching may grow.
 - **Technique counts** use a 30-day window ending today. **Focus progress**
   = share of the current Monday-start week's sessions tagged with the
   focus's linked tag ("Focus this week"). Submission counting was retired
@@ -109,7 +124,8 @@ parameterized by a local-date `todayIso` and covered by tests:
 - **Competitions never touch training stats**: they interleave with sessions
   on the Sessions screen and Home's recent list, and their placement/tags
   feed the two competition milestones above — but streak, mat hours, and
-  rounds come from sessions only.
+  rounds come from sessions only. XP is the deliberate exception: it is
+  gamification, not a training stat, so competitions earn XP too.
 
 Settings `weeklyGoal` (default 2) and `showMilestones` are stored under the
 `rollbook:v1` localStorage key; there is deliberately no settings UI (per
@@ -161,6 +177,11 @@ styled in-system:
   logs positional-sparring rounds beside free rolls; every round stat counts
   the two together. The prototype's Submissions card was retired at the same
   time — old sessions keep and display their historical sub tallies.
+- **XP, levels & characteristics** (October 2026): a character-level row on
+  Home and an Experience section on Progress (XP stat tiles + a year
+  sparkline), plus six lifelong characteristics as level cards — all pure
+  derivations from the logged history, styled in-system (thin accent
+  progress lines, no big fills). See "How the numbers are computed" below.
 
 ## Code map
 
@@ -171,6 +192,7 @@ src/
   types.ts       Session / Competition / AppData / form models
   dates.ts       local-date + Monday-week helpers, formatting, auto-titles
   stats.ts       every derived stat + the history feed (tested in stats.test.ts)
+  xp.ts          XP formulas, levels, six lifelong characteristics (xp.test.ts)
   curriculum.ts  Gracie Barra position groups + tag ordering
   store.ts       localStorage persistence (rollbook:v1) + defaults
   sync.ts        Supabase PostgREST mapping/merge + IO (useSync.ts schedules)

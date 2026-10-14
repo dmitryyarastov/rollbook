@@ -140,6 +140,43 @@
   color: var(--color-neutral-600);
 }
 
+/* ── Home: level ── */
+
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.level-chip {
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-300);
+  flex-shrink: 0;
+}
+.level-track {
+  display: block;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-neutral-900); /* canonical empty-track token */
+  overflow: hidden;
+}
+.level-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+.level-xp {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+}
+
 /* ── Home: hero card ── */
 
 .hero {
@@ -1010,6 +1047,52 @@
   margin-bottom: 8px;
 }
 
+/* ── Progress: XP + characteristics ── */
+
+.stat-n--xp {
+  color: var(--color-accent-300);
+}
+.xp-card {
+  margin-top: 10px;
+  padding: 14px 16px 10px;
+}
+.xp-spark {
+  display: block;
+  width: 100%;
+  height: 72px;
+}
+.crow-char {
+  padding: 12px 16px;
+}
+.crow-char-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.crow-char-label {
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+}
+.crow-char-lv {
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-300);
+}
+.crow-char--idle .crow-char-lv {
+  color: var(--color-neutral-600);
+}
+.crow-char-xp {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-neutral-500);
+  margin-top: 6px;
+  text-align: right;
+}
+
 /* ── Progress: streak flames ── */
 
 .frow {
@@ -1039,6 +1122,13 @@
   font-size: 13px;
   line-height: 1.3;
   color: var(--color-neutral-300);
+  flex: 1;
+}
+.frow-best {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-neutral-600);
+  flex-shrink: 0;
 }
 
 /* ── Progress screen ── */

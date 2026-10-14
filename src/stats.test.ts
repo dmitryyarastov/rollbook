@@ -12,6 +12,7 @@ import {
   openGuardMilestone,
   withSessionTags,
   sortByDateDesc,
+  bestWeeklyStreak,
   sessionRounds,
   streak,
   volume12w,
@@ -201,6 +202,32 @@ describe('weekly streak variants', () => {
     ]
     expect(focusStreak(s, 'Guard retention', TODAY)).toEqual({ weeks: 2, sinceIso: '2026-07-20' })
     expect(focusStreak(s, '', TODAY)).toEqual({ weeks: 0, sinceIso: null })
+  })
+})
+
+describe('bestWeeklyStreak', () => {
+  const atLeastOne = (week: Session[]) => week.length >= 1
+
+  it('finds the longest historical run, not just the current one', () => {
+    const s = [
+      mk('2026-06-01'), // 3-week run: Jun 1, 8, 15
+      mk('2026-06-08'),
+      mk('2026-06-15'),
+      // gap: Jun 22, 29
+      mk('2026-07-27'), // current week only: run of 1
+    ]
+    expect(bestWeeklyStreak(s, TODAY, atLeastOne)).toBe(3)
+  })
+
+  it('counts the qualifying current week into the tail run', () => {
+    const s = [mk('2026-07-20'), mk('2026-07-27')]
+    expect(bestWeeklyStreak(s, TODAY, atLeastOne)).toBe(2)
+  })
+
+  it('a non-qualifying current week does not erase the best', () => {
+    const s = [mk('2026-07-13'), mk('2026-07-20')]
+    expect(bestWeeklyStreak(s, TODAY, atLeastOne)).toBe(2)
+    expect(bestWeeklyStreak([], TODAY, atLeastOne)).toBe(0)
   })
 })
 

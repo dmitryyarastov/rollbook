@@ -4,6 +4,7 @@ import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
 import { fmtToday } from '../dates'
 import { focusProgress, formatHours, historyFeed, streak, weekSummary } from '../stats'
+import { characterLevel, totalXp } from '../xp'
 import type { SyncStatus } from '../sync'
 import type { AppData, FocusGoal } from '../types'
 
@@ -26,11 +27,12 @@ interface HomeProps {
 
 export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
   const goal = data.settings.weeklyGoal
-  const { week, st, recent } = useMemo(
+  const { week, st, recent, lvl } = useMemo(
     () => ({
       week: weekSummary(data.sessions, todayIso),
       st: streak(data.sessions, goal, todayIso),
       recent: historyFeed(data.sessions, data.competitions).slice(0, 3),
+      lvl: characterLevel(totalXp(data.sessions, data.competitions)),
     }),
     [data.sessions, data.competitions, goal, todayIso],
   )
@@ -45,6 +47,16 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
           {SYNC_LABELS[syncStatus] && <div className="sync-note">{SYNC_LABELS[syncStatus]}</div>}
         </div>
       </header>
+
+      <div className="level-row">
+        <span className="level-chip">LV {lvl.level}</span>
+        <span className="level-track">
+          <span className="level-fill" style={{ width: `${Math.round((100 * lvl.into) / lvl.need)}%` }} />
+        </span>
+        <span className="level-xp">
+          {lvl.into} / {lvl.need} XP
+        </span>
+      </div>
 
       <section className="card card--lg hero">
         <div className="hero-top">
