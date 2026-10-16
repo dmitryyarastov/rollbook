@@ -70,6 +70,25 @@ export interface Competition {
   tags: string[]
 }
 
+export type Belt = 'white' | 'blue' | 'purple' | 'brown' | 'black'
+
+/**
+ * A rank event: "the rank became belt/stripes on this date". Append-only per
+ * id like sessions — the current rank is the latest event, and a correction
+ * (a mis-tap, a backdated stripe) is simply another event, never an edit.
+ * Stripes are 0–4 on colored belts; on black they are degrees, 0–6.
+ */
+export interface Promotion {
+  id: string
+  /** Local calendar date, `yyyy-mm-dd`. Never derived via toISOString(). */
+  date: string
+  createdAt: number
+  /** Epoch ms of the last local edit; drives last-write-wins sync merges. */
+  updatedAt: number
+  belt: Belt
+  stripes: number
+}
+
 export interface FocusGoal {
   title: string
   /** Tag whose current-week frequency drives the progress bar. Empty = no goal set. */
@@ -84,6 +103,7 @@ export interface Settings {
 export interface AppData {
   sessions: Session[]
   competitions: Competition[]
+  promotions: Promotion[]
   tagList: string[]
   focus: FocusGoal
   settings: Settings

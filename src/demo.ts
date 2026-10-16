@@ -14,7 +14,7 @@
  */
 import { addDays, mondayOf, parseIso } from './dates'
 import { DEFAULT_TAGS, emptyData } from './store'
-import type { AppData, Competition, RoundMin, Session } from './types'
+import type { AppData, Competition, Promotion, RoundMin, Session } from './types'
 
 function mulberry32(seed: number): () => number {
   return () => {
@@ -215,10 +215,27 @@ export function demoData(todayIso: string): AppData {
     }),
   ].filter((c) => c.date <= todayIso && c.date >= jan1)
 
+  // A short rank history so the belt card has something to show: 4th stripe
+  // a few months back, blue belt three weeks ago. Same year guard.
+  const promotions: Promotion[] = [
+    { i: 0, date: addDays(curMon, -16 * 7 + 2), belt: 'white' as const, stripes: 4 },
+    { i: 1, date: addDays(curMon, -3 * 7 + 3), belt: 'blue' as const, stripes: 0 },
+  ]
+    .filter((p) => p.date <= todayIso && p.date >= jan1)
+    .map(({ i, date, belt, stripes }) => ({
+      id: `demo-promo-${i}`,
+      date,
+      createdAt: parseIso(date).getTime() + 20 * 3600_000 + i,
+      updatedAt: parseIso(date).getTime() + 20 * 3600_000 + i,
+      belt,
+      stripes,
+    }))
+
   return {
     ...emptyData(),
     sessions,
     competitions,
+    promotions,
     tagList: [...DEFAULT_TAGS],
     focus: { title: 'Guard retention under pressure', tag: 'Guard retention' },
   }

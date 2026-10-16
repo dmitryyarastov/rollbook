@@ -33,9 +33,10 @@ npm run preview    # serve the production build (port 4173) — needed to test t
 
 Browser console: `window.rollbook.seed()` loads deterministic demo data,
 `window.rollbook.clear()` resets local. Neither touches the remote database
-(`demo-` ids never sync), but **a real session/competition saved through the
-UI syncs to the live database and cannot be deleted by the app** — never
-save real-looking test entries against the live backend.
+(`demo-` ids never sync), but **a real session/competition/promotion saved
+through the UI syncs to the live database and cannot be deleted by the app** —
+never save real-looking test entries (or tap Promote "to see it work") against
+the live backend.
 
 ## Working rules
 
@@ -69,9 +70,10 @@ save real-looking test entries against the live backend.
    "round" everywhere means free rolls **plus** positional ("specific")
    rounds: `sessionRounds(s) = rolls + specific` is the one definition every
    round stat goes through (see docs/stats.md).
-3. **Sessions and competitions are append-only per id.** That is the only
-   reason the blind full-table upsert push is safe. An edit or delete
-   feature requires pull-before-every-push first (see docs/sync.md).
+3. **Sessions, competitions, and promotions (belt rank events) are
+   append-only per id.** That is the only reason the blind full-table upsert
+   push is safe. An edit or delete feature requires pull-before-every-push
+   first (see docs/sync.md).
 4. **Remote is untrusted.** Anon can insert/update (no auth yet); every pull
    goes through sanitizing mappers in `src/sync.ts`; remote never deletes
    local rows; ids starting `demo-` never sync in either direction.
@@ -82,14 +84,17 @@ save real-looking test entries against the live backend.
 6. **Whitelists are triple-declared** — TS union (`types.ts`), pull
    sanitizer (`sync.ts`), SQL check (`supabase-schema.sql`) — and must stay
    in lockstep: `RoundMin`, `SessionIntensity`, `CardioRating`, the competition
-   `Placement`, the session `time` HH:MM regex, and the session-duration and
-   specific-round (0–1000) bounds — the `specific` total and each of
-   `spec_closed`/`spec_mount`/`spec_open`.
+   `Placement`, the promotion `Belt` and its per-belt stripe cap (sanitizer
+   leg: `isValidRank` in `src/belts.ts`), the session `time` HH:MM regex, and
+   the session-duration and specific-round (0–1000) bounds — the `specific`
+   total and each of `spec_closed`/`spec_mount`/`spec_open`.
 7. **Design is law** (see docs/design-system.md): Inter 400/500 only; accent
    `#9184d9` only as lines/borders/glows/text marks, never a large fill;
    outlined buttons; component CSS appended to `src/app.css` as ordered
    `/* ── section ── */` blocks; longhand font properties; form controls
-   need explicit `font-family: inherit`.
+   need explicit `font-family: inherit`. The belt hues in the `Belt` CSS
+   section are the one deliberate non-token color exception (semantic,
+   glyph-sized only) — not a violation to fix, and not precedent.
 8. **The precache contract**: `scripts/sw-precache.mjs` text-replaces the
    `const CACHE = …` and `const PRECACHE = …` lines in `public/sw.js` — keep
    those two lines' exact shape.
@@ -133,6 +138,16 @@ save real-looking test entries against the live backend.
   pinned by `xp.test.ts`; changing one silently recomputes every level
   across all history, so change deliberately, never casually (see
   docs/stats.md).
+- **Belt rank is the one stored character attribute** (October 2026): it is
+  awarded by a coach, not derivable from history, so it lives as append-only
+  `Promotion` rank events (`src/belts.ts`, Progress → Levels belt card). The
+  ladder is the IBJJF-style adult one — white → blue → purple → brown with
+  0–4 stripes each, then black with 0–6 degrees. The current rank comes from
+  `rankTimeline`: per date only the latest-created event counts, so **a
+  correction is a new event that re-enters the mistaken day** (Undo promotion
+  does exactly that), never an edit; future-dated events are ignored until
+  their date. Don't add an edit or delete path for rank history. Rank feeds
+  no stat and no XP.
 - The UI recreates a high-fidelity handoff (`~/Downloads/design_handoff_rollbook/`,
   may not exist on every machine — `src/app.css` is the faithful transcription).
 - Sessions logged before the When picker existed may carry morning-shifted

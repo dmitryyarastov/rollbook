@@ -44,6 +44,7 @@ boundaries are the "what do I paste on an existing project" units. Current secti
 | Whole-session duration + RPE (added 2026-09) | nullable `sessions.duration_min` integer (1–600) and `sessions.intensity` smallint (1–5) | `add column if not exists`; named constraints guarded through `pg_constraint` |
 | Specific (positional) rounds (added 2026-10) | `sessions.specific` integer `not null default 0` with a `between 0 and 1000` check — positional rounds logged beside free rolls; every round stat counts both | `add column if not exists` |
 | Specific-training formats (added 2026-10) | `sessions.spec_closed` / `spec_mount` / `spec_open` integers `not null default 0`, each with a `between 0 and 1000` check — the per-format breakdown of `specific` (the gym's 2+2-minute swap formats); app-written rows keep `specific = spec_closed + spec_mount + spec_open`, not DB-enforced | `add column if not exists` |
+| Belt promotions (added 2026-10) | `promotions` table — append-only belt rank events (`date`, `belt` with a `belt in ('white','blue','purple','brown','black')` check, `stripes` with the named cross-field `promotions_stripes_check`: 0–4 on colored belts, 0–6 degrees on black), `(user_id, date)` index, RLS, select/insert/update policies, `revoke delete` | `create table if not exists`, `create index if not exists`, `drop policy if exists` before each `create policy` |
 
 Live status: `20260906065458_add_session_duration_intensity` was applied to project
 `rdhzcvmvtxnzittmclgr` on 6 Sep 2026 before the matching app deploy. The 17 historical
@@ -54,7 +55,10 @@ column's `default 0` is also the correct value for every historical row, so no b
 question arises. The same holds for the specific-training-formats addendum and the build
 that pushes `spec_closed`/`spec_mount`/`spec_open`: ALTER first, deploy second, and
 `default 0` is correct for every pre-format row (legacy rows keep an untyped total with a
-zero breakdown).
+zero breakdown). The belt-promotions addendum is the opposite case: a whole new table,
+which the app tolerates when missing (404 → rank events stay local and upload on the
+first push after it runs), so it **may run before or after** the deploy. Its constraints
+mirror `isValidRank` in `src/belts.ts`, which `fromPromoRow` applies on pull.
 
 Applying on an existing project: run **just the new section** — via MCP
 `apply_migration`, or pasted into the SQL editor. Applying on a fresh project: run the
@@ -66,13 +70,13 @@ The two failure modes for schema drift are deliberately asymmetric (see `pullAll
 `pushAll` in `src/sync.ts`):
 
 - **Missing table → tolerated.** PostgREST answers **404** for a table it does not know;
-  `pullAll` and `pushAll` treat exactly a competitions 404 as "no remote comps" —
-  competitions stay local and upload on the first push after the owner runs the
-  addendum. This is why a new *entity* can ship code-first.
+  `pullAll` and `pushAll` treat exactly a competitions or promotions 404 as "none
+  remote" — those rows stay local and upload on the first push after the owner runs
+  the addendum. This is why a new *entity* can ship code-first.
 - **Missing column on a pushed table → loud failure.** PostgREST answers **400**
   (`PGRST204`, "column not found in schema cache") when a pushed row names an unknown
   column, and `pushAll` throws — sync goes to `error` status for every device
-  running that build. This applies to competitions too: their 404 tolerance covers only
+  running that build. This applies to competitions and promotions too: their 404 tolerance covers only
   the whole table missing, so a comp push missing `placement`/`tags` 400s the same way.
   This strictness is deliberate. **The `ALTER TABLE … ADD COLUMN`
   must be live before deploying any build whose `toRow` includes the new column.**
@@ -160,6 +164,10 @@ tool appear — as of 2026-10-16 just `add_session_duration_intensity` and
   pulls overwrites the edit — the blind upsert sends its own `updated_at` too. Launch and
   foreground cycles pull first, so the exposure is a device left in the foreground since
   before the edit that then saves. Re-check the edit after the owner's next app use.
+- **Rank events never need a hand edit.** A wrong belt/stripe is corrected in the app by
+  appending a newer event from the belt card (the latest event is the rank); editing or
+  deleting a `promotions` row in SQL runs into the same push race and resurrection as any
+  other row.
 - **`app_state` is one blob with one clock.** Writing it with `updated_at = now()` makes
   every device adopt the whole remote blob, overriding any not-yet-synced local
   focus/tag/settings edit. Check the remote `updated_at` first; only ever **append** to
@@ -210,14 +218,14 @@ the clipboard alone.
 
 ## RLS model and the no-DELETE guarantee
 
-All three tables have RLS enabled with anon policies for **select / insert / update
-only**, each insert/update checked against `user_id = 'dmitrii'`. There is deliberately
+All four tables (`sessions`, `app_state`, `competitions`, `promotions`) have RLS enabled
+with anon policies for **select / insert / update only**, each insert/update checked against `user_id = 'dmitrii'`. There is deliberately
 no delete policy, and the privilege is additionally **revoked outright**
 (`revoke delete on … from anon`). Consequences:
 
 - A stranger who finds the site (the key is public) can add noise rows or mutate
   existing ones, but can **never erase history**. Pull-side sanitizers in `src/sync.ts`
-  (`fromRow`, `fromCompRow`, `fromStateRow`) plus "remote never deletes local rows" in
+  (`fromRow`, `fromCompRow`, `fromPromoRow`, `fromStateRow`) plus "remote never deletes local rows" in
   `mergeById` are the second layer that keeps tampering out of the app.
 - **The app can never delete anything either.** Janitorial deletes (tamper rows, junk)
   are owner-only operations via the dashboard Table Editor or SQL editor, psql with
@@ -259,8 +267,9 @@ curl -sI "${AUTH[@]}" -H 'Prefer: count=exact' \
 # One row by id
 curl -s "${AUTH[@]}" "$BASE/sessions?id=eq.<the-id>"
 
-# Competitions and the app_state blob
+# Competitions, belt rank events, and the app_state blob
 curl -s "${AUTH[@]}" "$BASE/competitions?select=*&user_id=eq.dmitrii&order=date.desc"
+curl -s "${AUTH[@]}" "$BASE/promotions?select=date,belt,stripes,created_at&user_id=eq.dmitrii&order=date.desc,created_at.desc"
 curl -s "${AUTH[@]}" "$BASE/app_state?user_id=eq.dmitrii"
 
 # Hunt for rows the app would hide (see the demo-99 incident below)
@@ -360,13 +369,13 @@ database is a replica.** If the Supabase project is lost, corrupted, or wiped:
    changed, and deploy.
 3. Open the app on any device holding the local copy. The launch cycle
    (`src/useSync.ts` — `useSync`: pull → merge → push) blind-upserts every non-demo
-   session and competition plus the state blob (pushed only when `stateUpdatedAt > 0`) —
+   session, competition, and rank event plus the state blob (pushed only when `stateUpdatedAt > 0`) —
    the DB is fully rebuilt by that one push. No import tooling exists or is needed.
 
 The inverse also holds: a fresh device with empty localStorage rebuilds itself from the
 DB on first pull. The only unrecoverable scenario is losing every device's localStorage
 *and* the database simultaneously — there is no third copy, so if that risk ever
-matters, an occasional owner-run curl dump of the three tables to a file is the cheap
+matters, an occasional owner-run curl dump of the four tables to a file is the cheap
 insurance.
 
 ## Operational coupling table
@@ -375,8 +384,8 @@ insurance.
 |---|---|
 | `src/config.ts` URL/key | Point at a project where `supabase-schema.sql` has been run in full; verify with the curl queries above |
 | `supabase-schema.sql` (new column on a pushed table) | Apply the ALTER (MCP workflow 1 or the SQL editor) **before** deploying the build that pushes it; update `src/types.ts` union + `src/sync.ts` `toRow`/`fromRow` sanitizer in lockstep ([sync.md](sync.md) playbook, including its version-skew step) |
-| `supabase-schema.sql` (new table) | Nothing urgent — code may ship first; pushes/pulls tolerate the 404 only if you replicate the competitions pattern in `pullAll`/`pushAll` |
-| A SQL `check` constraint | Mirror it exactly in the `src/sync.ts` sanitizer and the `src/types.ts` union (triple declaration) |
+| `supabase-schema.sql` (new table) | Nothing urgent — code may ship first; pushes/pulls tolerate the 404 only if you replicate the competitions/promotions pattern in `pullAll`/`pushAll` |
+| A SQL `check` constraint | Mirror it exactly in the `src/sync.ts` sanitizer and the `src/types.ts` union (triple declaration; for the `promotions` belt/stripe checks the sanitizer leg is `isValidRank` in `src/belts.ts`) |
 | Any row by hand in SQL | Set `updated_at = now()` on it, or no device will ever pick the change up; pin ids first and re-check after the next app use (MCP workflow 2) |
 | The MCP connection (scope, auth) | Keep `project_ref` pinned in `~/training-hub/.mcp.json`; re-auth with a TTY-wrapped `claude mcp login supabase`; restoring a paused project stays a dashboard task |
 | RLS policies (auth migration) | Swap the Bearer token source in `baseHeaders` (`src/sync.ts`) and backfill `user_id` |

@@ -10,7 +10,22 @@
  */
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
 import { emptyData } from './store'
-import type { AppData, CardioRating, CompMatch, CompOutcome, Competition, FocusGoal, Placement, RoundMin, Session, SessionIntensity, Settings } from './types'
+import { isValidRank } from './belts'
+import type {
+  AppData,
+  Belt,
+  CardioRating,
+  CompMatch,
+  CompOutcome,
+  Competition,
+  FocusGoal,
+  Placement,
+  Promotion,
+  RoundMin,
+  Session,
+  SessionIntensity,
+  Settings,
+} from './types'
 
 export type SyncStatus = 'disabled' | 'syncing' | 'synced' | 'offline' | 'error'
 
@@ -24,6 +39,7 @@ export interface RemoteState {
 export interface RemotePull {
   sessions: Session[]
   competitions: Competition[]
+  promotions: Promotion[]
   state: RemoteState | null
 }
 
@@ -207,6 +223,47 @@ export function fromCompRow(r: unknown): Competition | null {
   }
 }
 
+interface PromotionRow {
+  id: string
+  user_id: string
+  date: string
+  belt: string
+  stripes: number
+  created_at: string
+  updated_at: string
+}
+
+export function toPromoRow(p: Promotion): PromotionRow {
+  return {
+    id: p.id,
+    user_id: SYNC_USER_ID,
+    date: p.date, // verbatim yyyy-mm-dd — never routed through a JS Date
+    belt: p.belt,
+    stripes: p.stripes,
+    created_at: new Date(p.createdAt).toISOString(),
+    updated_at: new Date(p.updatedAt).toISOString(),
+  }
+}
+
+/**
+ * Sanitizing pull-side mapper for rank events. The belt is the event's whole
+ * meaning, so an unknown belt drops the row (no sane default — a guessed
+ * belt would silently re-rank the character); stripes outside the belt's
+ * cap also drop it rather than clamp, for the same reason.
+ */
+export function fromPromoRow(r: unknown): Promotion | null {
+  if (typeof r !== 'object' || r === null) return null
+  const o = r as Record<string, unknown>
+  if (typeof o.id !== 'string' || o.id === '') return null
+  if (typeof o.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(o.date)) return null
+  const createdAt = typeof o.created_at === 'string' ? Date.parse(o.created_at) : NaN
+  const updatedAt = typeof o.updated_at === 'string' ? Date.parse(o.updated_at) : NaN
+  if (Number.isNaN(createdAt) || Number.isNaN(updatedAt)) return null
+  const rank = { belt: o.belt as Belt, stripes: Number(o.stripes) }
+  if (typeof o.belt !== 'string' || !isValidRank(rank)) return null
+  return { id: o.id, date: o.date, createdAt, updatedAt, belt: rank.belt, stripes: rank.stripes }
+}
+
 export function fromStateRow(r: unknown): RemoteState | null {
   if (typeof r !== 'object' || r === null) return null
   const o = r as Record<string, unknown>
@@ -300,17 +357,21 @@ export const mergeSessions = (local: Session[], remote: Session[]): Session[] =>
   mergeById(local, remote, recoversBreakdown)
 export const mergeCompetitions = (local: Competition[], remote: Competition[]): Competition[] =>
   mergeById(local, remote)
+export const mergePromotions = (local: Promotion[], remote: Promotion[]): Promotion[] =>
+  mergeById(local, remote)
 
 export function mergeAppData(d: AppData, remote: RemotePull): AppData {
   const sessions = mergeSessions(d.sessions, remote.sessions)
   const competitions = mergeCompetitions(d.competitions, remote.competitions)
+  const promotions = mergePromotions(d.promotions, remote.promotions)
   const adopt = remote.state !== null && remote.state.updatedAt > d.stateUpdatedAt
-  if (sessions === d.sessions && competitions === d.competitions && !adopt) return d
-  if (!adopt || remote.state === null) return { ...d, sessions, competitions }
+  if (sessions === d.sessions && competitions === d.competitions && promotions === d.promotions && !adopt) return d
+  if (!adopt || remote.state === null) return { ...d, sessions, competitions, promotions }
   return {
     ...d,
     sessions,
     competitions,
+    promotions,
     focus: remote.state.focus,
     tagList: remote.state.tagList,
     settings: remote.state.settings,
@@ -332,24 +393,31 @@ export async function pullAll(f: typeof fetch = fetch): Promise<RemotePull> {
     f(`${SUPABASE_URL}/rest/v1/${path}`, { headers: baseHeaders(), signal: AbortSignal.timeout(TIMEOUT_MS) })
   // PostgREST caps responses at 1000 rows; updated_at.desc means a
   // hypothetical overflow drops the oldest sessions, not the newest.
-  const [sesRes, compRes, stateRes] = await Promise.all([
+  const [sesRes, compRes, promoRes, stateRes] = await Promise.all([
     get(`sessions?select=*&user_id=eq.${SYNC_USER_ID}&order=updated_at.desc`),
     get(`competitions?select=*&user_id=eq.${SYNC_USER_ID}&order=updated_at.desc`),
+    get(`promotions?select=*&user_id=eq.${SYNC_USER_ID}&order=updated_at.desc`),
     get(`app_state?select=*&user_id=eq.${SYNC_USER_ID}`),
   ])
   if (!sesRes.ok || !stateRes.ok) throw new Error(`sync pull ${sesRes.status}/${stateRes.status}`)
-  // The competitions table may postdate this build's schema (the SQL addendum
-  // not yet run): PostgREST answers 404 for a missing table. Treat exactly
-  // that as "no remote comps" so sessions keep syncing; anything else is real.
+  // The competitions and promotions tables may postdate this build's schema
+  // (the SQL addendum not yet run): PostgREST answers 404 for a missing table.
+  // Treat exactly that as "none remote" so sessions keep syncing; anything
+  // else is real.
   if (!compRes.ok && compRes.status !== 404) throw new Error(`sync pull ${compRes.status}`)
+  if (!promoRes.ok && promoRes.status !== 404) throw new Error(`sync pull ${promoRes.status}`)
   const sesJson = (await sesRes.json()) as unknown
   const compJson = compRes.ok ? ((await compRes.json()) as unknown) : []
+  const promoJson = promoRes.ok ? ((await promoRes.json()) as unknown) : []
   const stateJson = (await stateRes.json()) as unknown
   return {
     sessions: (Array.isArray(sesJson) ? sesJson : []).map(fromRow).filter((s): s is Session => s !== null),
     competitions: (Array.isArray(compJson) ? compJson : [])
       .map(fromCompRow)
       .filter((c): c is Competition => c !== null),
+    promotions: (Array.isArray(promoJson) ? promoJson : [])
+      .map(fromPromoRow)
+      .filter((p): p is Promotion => p !== null),
     state: Array.isArray(stateJson) && stateJson.length > 0 ? fromStateRow(stateJson[0]) : null,
   }
 }
@@ -368,6 +436,7 @@ export async function pushAll(d: AppData, f: typeof fetch = fetch): Promise<void
     })
   const rows = d.sessions.filter(isPushable).map(toRow)
   const compRows = d.competitions.filter(isPushable).map(toCompRow)
+  const promoRows = d.promotions.filter(isPushable).map(toPromoRow)
   const reqs: Promise<Response>[] = []
   if (rows.length > 0) reqs.push(post('sessions?on_conflict=id', rows))
   if (d.stateUpdatedAt > 0) {
@@ -383,12 +452,14 @@ export async function pushAll(d: AppData, f: typeof fetch = fetch): Promise<void
     )
   }
   // Tracked outside `reqs`: a 404 (table not created yet) is tolerated for
-  // competitions only — they stay local and upload on the first push after
-  // the user runs the SQL addendum. Sessions/app_state stay strict.
+  // competitions and promotions only — they stay local and upload on the
+  // first push after the SQL addendum runs. Sessions/app_state stay strict.
   const compReq = compRows.length > 0 ? post('competitions?on_conflict=id', compRows) : null
-  const [strict, compRes] = await Promise.all([Promise.all(reqs), compReq])
+  const promoReq = promoRows.length > 0 ? post('promotions?on_conflict=id', promoRows) : null
+  const [strict, compRes, promoRes] = await Promise.all([Promise.all(reqs), compReq, promoReq])
   for (const res of strict) {
     if (!res.ok) throw new Error(`sync push ${res.status}`)
   }
   if (compRes !== null && !compRes.ok && compRes.status !== 404) throw new Error(`sync push ${compRes.status}`)
+  if (promoRes !== null && !promoRes.ok && promoRes.status !== 404) throw new Error(`sync push ${promoRes.status}`)
 }

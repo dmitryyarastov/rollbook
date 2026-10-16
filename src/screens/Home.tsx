@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { currentRank } from '../belts'
+import { BeltGlyph } from '../components/BeltGlyph'
 import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
@@ -27,14 +29,15 @@ interface HomeProps {
 
 export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onChangeFocus }: HomeProps) {
   const goal = data.settings.weeklyGoal
-  const { week, st, recent, lvl } = useMemo(
+  const { week, st, recent, lvl, rank } = useMemo(
     () => ({
       week: weekSummary(data.sessions, todayIso),
       st: streak(data.sessions, goal, todayIso),
       recent: historyFeed(data.sessions, data.competitions).slice(0, 3),
       lvl: characterLevel(totalXp(data.sessions, data.competitions)),
+      rank: currentRank(data.promotions, todayIso),
     }),
-    [data.sessions, data.competitions, goal, todayIso],
+    [data.sessions, data.competitions, data.promotions, goal, todayIso],
   )
   const maxBar = Math.max(...week.bars.map((b) => b.rounds), 1)
 
@@ -49,6 +52,7 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
       </header>
 
       <div className="level-row">
+        {rank && <BeltGlyph belt={rank.belt} stripes={rank.stripes} />}
         <span className="level-chip">LV {lvl.level}</span>
         <span className="level-track">
           <span className="level-fill" style={{ width: `${Math.round((100 * lvl.into) / lvl.need)}%` }} />

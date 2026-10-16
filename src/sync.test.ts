@@ -2,18 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { emptyData } from './store'
 import {
   fromCompRow,
+  fromPromoRow,
   fromRow,
   fromStateRow,
   isPushable,
   mergeAppData,
   mergeCompetitions,
+  mergePromotions,
   mergeSessions,
   pullAll,
   pushAll,
   toCompRow,
+  toPromoRow,
   toRow,
 } from './sync'
-import type { AppData, Competition, Session } from './types'
+import type { AppData, Competition, Promotion, Session } from './types'
 
 let seq = 0
 function mk(over: Partial<Session> = {}): Session {
@@ -63,6 +66,19 @@ function mkComp(over: Partial<Competition> = {}): Competition {
       { outcome: 'loss', myPoints: 0, theirPoints: 0, submission: 'Armbar' },
     ],
     tags: [],
+    ...over,
+  }
+}
+
+function mkPromo(over: Partial<Promotion> = {}): Promotion {
+  seq++
+  return {
+    id: `p${seq}`,
+    date: '2026-10-16',
+    createdAt: 1_760_600_000_123,
+    updatedAt: 1_760_600_000_123,
+    belt: 'white',
+    stripes: 4,
     ...over,
   }
 }
@@ -232,6 +248,33 @@ describe('competition row mapping', () => {
   })
 })
 
+describe('promotion rows', () => {
+  it('round-trips a rank event ms-exactly', () => {
+    const p = mkPromo({ belt: 'blue', stripes: 1 })
+    expect(fromPromoRow(toPromoRow(p))).toEqual(p)
+  })
+
+  it('drops rows whose meaning is unusable instead of guessing a rank', () => {
+    const good = toPromoRow(mkPromo())
+    expect(fromPromoRow(null)).toBeNull()
+    expect(fromPromoRow({ ...good, id: '' })).toBeNull()
+    expect(fromPromoRow({ ...good, date: '16/10/2026' })).toBeNull()
+    expect(fromPromoRow({ ...good, updated_at: 'junk' })).toBeNull()
+    expect(fromPromoRow({ ...good, belt: 'coral' })).toBeNull()
+    expect(fromPromoRow({ ...good, belt: 7 })).toBeNull()
+    expect(fromPromoRow({ ...good, stripes: 5 })).toBeNull() // white caps at 4
+    expect(fromPromoRow({ ...good, stripes: 'lots' })).toBeNull()
+    expect(fromPromoRow({ ...good, belt: 'black', stripes: 6 })!.stripes).toBe(6) // degrees
+  })
+
+  it('merges like every other entity and ignores demo ids', () => {
+    const local = [mkPromo({ id: 'a', date: '2026-10-16' })]
+    const merged = mergePromotions(local, [mkPromo({ id: 'b', date: '2027-03-01', belt: 'blue', stripes: 0 }), mkPromo({ id: 'demo-promo-1' })])
+    expect(merged.map((p) => p.id)).toEqual(['a', 'b'])
+    expect(mergePromotions(local, [])).toBe(local)
+  })
+})
+
 describe('mergeSessions', () => {
   it('takes the remote version when strictly newer', () => {
     const local = mk({ id: 'a', rolls: 3, updatedAt: 100 })
@@ -320,7 +363,7 @@ describe('mergeAppData', () => {
 
   it('adopts remote state when strictly newer', () => {
     const d = appData({ stateUpdatedAt: 100 })
-    const out = mergeAppData(d, { sessions: [], competitions: [], state: remoteState })
+    const out = mergeAppData(d, { sessions: [], competitions: [], promotions: [], state: remoteState })
     expect(out.focus.tag).toBe('Berimbolo')
     expect(out.settings.weeklyGoal).toBe(3)
     expect(out.stateUpdatedAt).toBe(900)
@@ -328,22 +371,28 @@ describe('mergeAppData', () => {
 
   it('keeps local state when remote is older or absent', () => {
     const d = appData({ stateUpdatedAt: 1000, focus: { title: 'Mine', tag: 'Kimura' } })
-    expect(mergeAppData(d, { sessions: [], competitions: [], state: remoteState }).focus.tag).toBe('Kimura')
-    expect(mergeAppData(d, { sessions: [], competitions: [], state: null })).toBe(d)
+    expect(mergeAppData(d, { sessions: [], competitions: [], promotions: [], state: remoteState }).focus.tag).toBe('Kimura')
+    expect(mergeAppData(d, { sessions: [], competitions: [], promotions: [], state: null })).toBe(d)
   })
 
   it('adopts pulled competitions in both state branches', () => {
     const c = mkComp({ id: 'r-comp' })
     const d = appData({ stateUpdatedAt: 1000 })
-    expect(mergeAppData(d, { sessions: [], competitions: [c], state: null }).competitions).toEqual([c])
-    const adopted = mergeAppData(appData({ stateUpdatedAt: 100 }), { sessions: [], competitions: [c], state: remoteState })
+    expect(mergeAppData(d, { sessions: [], competitions: [c], promotions: [], state: null }).competitions).toEqual([c])
+    const adopted = mergeAppData(appData({ stateUpdatedAt: 100 }), { sessions: [], competitions: [c], promotions: [], state: remoteState })
     expect(adopted.competitions).toEqual([c])
     expect(adopted.focus.tag).toBe('Berimbolo')
   })
 
+  it('adopts pulled promotions', () => {
+    const p = mkPromo({ id: 'r-promo' })
+    const d = appData({ stateUpdatedAt: 1000 })
+    expect(mergeAppData(d, { sessions: [], competitions: [], promotions: [p], state: null }).promotions).toEqual([p])
+  })
+
   it('returns the same reference when sessions, competitions, and state are all unchanged', () => {
     const d = appData({ sessions: [mk()], competitions: [mkComp()], stateUpdatedAt: 1000 })
-    expect(mergeAppData(d, { sessions: d.sessions, competitions: d.competitions, state: null })).toBe(d)
+    expect(mergeAppData(d, { sessions: d.sessions, competitions: d.competitions, promotions: d.promotions, state: null })).toBe(d)
   })
 })
 
@@ -425,6 +474,19 @@ describe('pushAll', () => {
     expect(body[0].matches).toHaveLength(2)
   })
 
+  it('upserts non-demo promotions to their own table and tolerates its 404', async () => {
+    const { f, calls } = stubFetch()
+    await pushAll(appData({ promotions: [mkPromo({ id: 'real-p' }), mkPromo({ id: 'demo-promo-0' })] }), f)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toContain('/rest/v1/promotions?on_conflict=id')
+    const body = JSON.parse(String(calls[0].init!.body)) as { id: string }[]
+    expect(body.map((r) => r.id)).toEqual(['real-p'])
+    const missing = stubFetch((url) => (url.includes('/promotions') ? new Response('', { status: 404 }) : okJson([])))
+    await expect(pushAll(appData({ promotions: [mkPromo()] }), missing.f)).resolves.toBeUndefined()
+    const down = stubFetch((url) => (url.includes('/promotions') ? new Response('', { status: 503 }) : okJson([])))
+    await expect(pushAll(appData({ promotions: [mkPromo()] }), down.f)).rejects.toThrow('503')
+  })
+
   it('sends no competitions request when only demo comps exist', async () => {
     const { f, calls } = stubFetch()
     await pushAll(appData({ competitions: [mkComp({ id: 'demo-comp-0' })] }), f)
@@ -469,6 +531,18 @@ describe('pullAll', () => {
     expect(pull.sessions.map((s) => s.id)).toEqual(['r1'])
     expect(pull.competitions.map((c) => c.id)).toEqual(['rc1'])
     expect(pull.state).not.toBeNull()
+  })
+
+  it('pulls promotions and tolerates their table being missing', async () => {
+    const goodPromo = toPromoRow(mkPromo({ id: 'rp1' }))
+    const { f } = stubFetch((url) =>
+      url.includes('/promotions') ? okJson([goodPromo, { junk: true }]) : okJson([]),
+    )
+    expect((await pullAll(f)).promotions.map((p) => p.id)).toEqual(['rp1'])
+    const missing = stubFetch((url) => (url.includes('/promotions') ? new Response('', { status: 404 }) : okJson([])))
+    expect((await pullAll(missing.f)).promotions).toEqual([])
+    const down = stubFetch((url) => (url.includes('/promotions') ? new Response('', { status: 500 }) : okJson([])))
+    await expect(pullAll(down.f)).rejects.toThrow('500')
   })
 
   it('tolerates a 404 on competitions only (table not created yet)', async () => {

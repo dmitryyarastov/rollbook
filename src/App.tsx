@@ -11,7 +11,9 @@ import { orderTagsByCurriculum } from './curriculum'
 import { withSessionTags } from './stats'
 import { emptyData, uid, useAppData } from './store'
 import { useSync } from './useSync'
-import type { CompForm, Competition, FocusGoal, GiFilter, LogForm, LogMode, Session, Tab } from './types'
+import { isPromotionDate, isValidRank } from './belts'
+import type { Rank } from './belts'
+import type { CompForm, Competition, FocusGoal, GiFilter, LogForm, LogMode, Promotion, Session, Tab } from './types'
 
 declare global {
   interface Window {
@@ -179,6 +181,22 @@ export default function App() {
     requestPush()
   }
 
+  // A promotion (or a correction) is a new rank event — never an edit.
+  const addPromotion = (rank: Rank, dateIso: string) => {
+    if (!isValidRank(rank) || !isPromotionDate(dateIso, todayIso)) return
+    const now = Date.now()
+    const promotion: Promotion = {
+      id: uid(),
+      date: dateIso,
+      createdAt: now,
+      updatedAt: now,
+      belt: rank.belt,
+      stripes: rank.stripes,
+    }
+    update((d) => ({ ...d, promotions: [...d.promotions, promotion] }))
+    requestPush()
+  }
+
   const setFocus = (focus: FocusGoal) => {
     const stamp = Date.now()
     update((d) => ({ ...d, focus, stateUpdatedAt: stamp }))
@@ -224,7 +242,7 @@ export default function App() {
           />
         )}
         {tab === 'tech' && <Techniques data={data} todayIso={todayIso} onChangeFocus={setFocus} />}
-        {tab === 'progress' && <Progress data={data} todayIso={todayIso} />}
+        {tab === 'progress' && <Progress data={data} todayIso={todayIso} onAddPromotion={addPromotion} />}
       </main>
       <TabBar tab={tab} onPick={pickTab} />
     </div>

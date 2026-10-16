@@ -13,6 +13,9 @@ and what worked / what didn't. Training entries record free-sparring rounds
 and positional ("specific") rounds typed by the gym's 2+2-minute swap
 formats — closed guard, mount, open guard — plus round length and
 whole-session duration with 1–5 RPE for downstream training-load analysis.
+The character also carries a belt rank: Progress shows the current belt and
+stripes with a one-tap Promote button for the next stripe or belt, and a
+pencil to set any rank on any past date.
 
 System documentation for contributors (and AI agents) lives in
 [docs/](docs/) — architecture, data model, sync protocol, stats semantics,
@@ -24,7 +27,7 @@ with [CLAUDE.md](CLAUDE.md) as the entry point and invariants digest.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # vitest — dates/stats/xp/curriculum/store/sync/demo suites
+npm test           # vitest — dates/stats/xp/belts/curriculum/store/sync/demo suites
 npm run build      # typecheck + production build + SW precache injection
 npm run preview    # serve the production build
 npm run icons      # regenerate public/icons PNGs from the SVG mark (sharp)
@@ -65,10 +68,12 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
   "Specific-training formats" ALTER (spec_closed / spec_mount / spec_open)
   for builds from mid-October 2026: until the applicable section runs,
   pushes to that table 400 and sync shows an error (data stays safe locally).
-  A missing competitions table is merely tolerated (comps stay local until it
-  exists) — the tolerance covers the whole table, not a missing column.
-  Sessions and competitions land in plain Postgres tables — query them from
-  the dashboard or psql:
+  A missing competitions or promotions table is merely tolerated (comps and
+  belt rank events stay local until it exists — so the "Belt promotions"
+  section may run before or after deploying) — the tolerance covers the whole
+  table, not a missing column.
+  Sessions, competitions, and promotions land in plain Postgres tables —
+  query them from the dashboard or psql:
   `select tag, count(*) from sessions, unnest(tags) tag group by 1;`
 - Merges are last-write-wins by `updatedAt`; remote is never authoritative
   for deletions, and the anon role cannot DELETE at all.
@@ -115,6 +120,11 @@ parameterized by a local-date `todayIso` and covered by tests:
   counts once; the standing group splits by the session's gi flag, and
   escapes deliberately don't count as top control. The set is fixed by
   design; only the matching may grow.
+- **Belt rank** (`src/belts.ts`) is the exception to "nothing stored": a
+  promotion is awarded, not computed, so each one is saved as a dated rank
+  event (white → blue → purple → brown with 0–4 stripes, then black with
+  0–6 degrees). The current rank is simply the latest event; a correction is
+  just a newer event, so history is never edited. Rank feeds no stat or XP.
 - **Technique counts** use a 30-day window ending today. **Focus progress**
   = share of the current Monday-start week's sessions tagged with the
   focus's linked tag ("Focus this week"). Submission counting was retired
@@ -191,6 +201,14 @@ styled in-system:
   sparkline), plus six lifelong characteristics as level cards — all pure
   derivations from the logged history, styled in-system (thin accent
   progress lines, no big fills). See "How the numbers are computed" below.
+- **Belt rank** (October 2026): a belt card at the top of Progress → Levels
+  (current rank, since when, the rank history), a Promote button with an
+  inline confirm, an Undo promotion button for mis-taps, and a pencil panel
+  for first setup or backdated history (a day that already has an entry is
+  replaced; future dates are refused); a small belt glyph joins Home's level
+  row. Belt
+  colors are the one deliberate departure from the palette, drawn only at
+  glyph size.
 
 ## Code map
 
@@ -198,16 +216,18 @@ styled in-system:
 src/
   nocturne.css   design tokens (copied from the handoff, fonts self-hosted)
   app.css        all component styles, translated 1:1 from the prototype
-  types.ts       Session / Competition / AppData / form models
+  types.ts       Session / Competition / Promotion / AppData / form models
   dates.ts       local-date + Monday-week helpers, formatting, auto-titles
   stats.ts       every derived stat + the history feed (tested in stats.test.ts)
   xp.ts          XP formulas, levels, six lifelong characteristics (xp.test.ts)
+  belts.ts       belt ladder + current rank from promotion events (belts.test.ts)
   curriculum.ts  Gracie Barra position groups + tag ordering
   store.ts       localStorage persistence (rollbook:v1) + defaults
   sync.ts        Supabase PostgREST mapping/merge + IO (useSync.ts schedules)
   demo.ts        deterministic demo seed, anchored to "today"
   App.tsx        tab/UI state, save flows, window.rollbook helpers
-  components/    TabBar, Chip, Stepper, SessionRow, CompRow, FocusCard
+  components/    TabBar, Chip, Stepper, SessionRow, CompRow, FocusCard,
+                 BeltGlyph, BeltCard
   screens/       Home, Sessions, Log, Techniques, Progress
 public/
   sw.js          network-first SW; build injects the precache list

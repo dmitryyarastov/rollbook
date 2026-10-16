@@ -131,6 +131,25 @@ describe('load', () => {
     expect(load().settings.weeklyGoal).toBe(3)
   })
 
+  it('defaults promotions to [] for older blobs and drops malformed rank events', () => {
+    stubStorage(JSON.stringify({ sessions: [session] }))
+    expect(load().promotions).toEqual([])
+    const good = { id: 'p1', date: '2026-10-16', createdAt: 1, updatedAt: 1, belt: 'white', stripes: 4 }
+    stubStorage(
+      JSON.stringify({
+        promotions: [
+          good,
+          { ...good, id: 'p2', belt: 'coral' },
+          { ...good, id: 'p3', stripes: 9 },
+          { ...good, id: 'p4', date: '16/10/2026' },
+          'junk',
+          null,
+        ],
+      }),
+    )
+    expect(load().promotions).toEqual([good])
+  })
+
   it('returns fresh empty data when storage is empty or unparseable', () => {
     stubStorage(null)
     expect(load()).toEqual(emptyData())

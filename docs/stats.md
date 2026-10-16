@@ -1,6 +1,6 @@
 # Stats
 
-All derived numbers on screen come from `src/stats.ts` — plus `src/xp.ts`, the XP/gamification layer documented at the bottom of this file, which builds on stats. Every function is pure and side-effect-free; anything time-dependent takes `todayIso` (a local `yyyy-mm-dd` string) as an explicit parameter. Date arithmetic comes from `src/dates.ts` (local-parts only; `toISOString()`/UTC APIs are banned for calendar dates — see [architecture.md](architecture.md)). Weeks are Monday–Sunday everywhere.
+All derived numbers on screen come from `src/stats.ts` — plus `src/xp.ts`, the XP/gamification layer documented at the bottom of this file, which builds on stats, and `src/belts.ts`, the belt-rank readouts derived from stored rank events (last section before the coupling table). Every function is pure and side-effect-free; anything time-dependent takes `todayIso` (a local `yyyy-mm-dd` string) as an explicit parameter. Date arithmetic comes from `src/dates.ts` (local-parts only; `toISOString()`/UTC APIs are banned for calendar dates — see [architecture.md](architecture.md)). Weeks are Monday–Sunday everywhere.
 
 ## Contracts that hold across the whole module
 
@@ -103,6 +103,36 @@ Per-day XP buckets for `todayIso`'s calendar year — `byDay` has 365/366 entrie
 
 Grants are **flat per entry**: 25 XP per session / 60 per competition that touches the attribute (by tags, or for sessions by `matchesSpecific`), regardless of how many of its tags match — so tag-spamming one session cannot grind an attribute, and a session qualifying via both a tag and specific work still counts once. Each returned state carries `id`/`label`/`xp` plus the 50/25 `level`/`into`/`need` fields for the Progress characteristic cards. `sessionsToNext(state)` = `ceil((need − into) / 25)` — the qualifying training sessions still needed for the next level (a competition's 60 can leave a remainder, hence the ceiling); it powers the cards' "N sessions to LV n+1" hint.
 
+## Belt rank (`src/belts.ts`)
+
+The contrast with XP: belt rank is **stored** — append-only `Promotion` events ([data-model.md](data-model.md)) — because it is awarded by a coach, not earned by formula. Everything shown about it is still a pure derivation over those events under this file's rules: no clock reads (the caller supplies every date), `yyyy-mm-dd` strings compared as strings, non-mutating sorts. Rank feeds nothing else: neither `src/stats.ts` nor `src/xp.ts` reads promotions, so no stat or XP number moves when a belt does.
+
+### The ladder — `BELTS`, `maxStripes(belt)`, `isValidRank(r)`, `nextRank(r)`
+The IBJJF-style adult ladder: white → blue → purple → brown with 0–4 stripes each, then black with **degrees** 0–6 (`maxStripes`: 4, or 6 on black). `isValidRank` = known belt and integer stripes within `[0, maxStripes(belt)]` — the shared validity rule for `load()` and the `fromPromoRow` sanitizer ([sync.md](sync.md)). `nextRank` is the Promote button's target: one more stripe while under the cap, else the next belt at 0 stripes; `null` at black 6th degree.
+
+### `promotionsAsc(promotions)`
+The **raw log**, oldest → newest by `date`, then `createdAt`. Non-mutating. Nothing user-facing renders it — the UI reads the timeline below.
+
+### `rankTimeline(promotions, todayIso)` → `{ belt, stripes, sinceIso }[]`
+The effective rank history, oldest → newest. Three rules turn the append-only log into it:
+1. **Per date, only the latest-created event counts** (exact `createdAt` ties break by `id`, so every device agrees). A same-day entry *replaces* that day's earlier one — this is the correction model: a mistake is fixed by re-entering its day, and it drops out of the timeline instead of breaking it.
+2. **Events dated after `todayIso` are ignored** until their date arrives, so a typo'd or tampered future date can never pin the rank.
+3. **Consecutive days at the same rank collapse** into one entry dated at the first, so a backdated duplicate ("white, 4 stripes" re-entered with its real July date) moves `sinceIso` back instead of resetting it.
+
+The belt card's history renders this newest-first (last six), never the raw log.
+
+### `currentRank(promotions, todayIso)` → `{ belt, stripes, sinceIso, beltSinceIso } | null`
+The last timeline entry, or `null` with no (past-dated) events. `sinceIso` is that entry's first day; `beltSinceIso` walks back over earlier entries on the same belt. The 2026-10-16 review pinned why rule 1 exists: under the earlier "latest event, walk back the trailing run" model, a same-day mis-tap fix permanently reset the since-date (white 4 since Jul 3 → mis-tapped blue → fixed → "since Oct 16" forever, with a phantom "Blue belt" in history). Now the fix replaces the mistake and Jul 3 survives.
+
+### `undoTarget(promotions, todayIso)` → `{ rank, dateIso } | null`
+What "Undo promotion" appends: the rank in effect before the latest day's entry, **dated that same day** — so by rule 1 it replaces the promotion however many days later the undo happens. Offered only when the latest change moved **up** the ladder (`rankOrder`), so an undo never turns into a redo toggle; `null` with fewer than two entries.
+
+### `isPromotionDate(iso, todayIso)`
+A savable rank date: `yyyy-mm-dd` and `≤ todayIso`. Guards the editor's Save (a cleared input no longer silently becomes today; a future date is refused with a message) and `App.addPromotion`; `max={todayIso}` on the date input is only a picker hint — desktop browsers let you type any year past it.
+
+### `rankLabel(r)` / `promotionLabel(from, to)`
+Copy, but pinned: "White belt · 4 stripes", "Blue belt · 1 stripe", "Blue belt" at 0, "Black belt · 2nd degree"; the next promotion reads "Add 1st stripe", "Promote to blue belt", or "Award 3rd degree".
+
 ## Coupling table
 
 | If you change… | You must also change… |
@@ -120,8 +150,10 @@ Grants are **flat per entry**: 25 XP per session / 60 per competition that touch
 | `formatHours` thresholds | The design renderings it matches ([design-system.md](design-system.md)); Home and Progress hour tiles |
 | An XP formula or level-curve constant (`src/xp.ts` — `sessionXp`/`compXp`/`MEDAL_XP`, the 100/50 and 50/25 curves, the flat 25/60 characteristic grants) | The pinned numbers in `src/xp.test.ts`; nothing else — levels silently recompute across all history (`src/demo.test.ts` deliberately asserts no XP numbers) |
 | `CHARACTERISTICS` (tag matchers, `matchesSpecific` predicates, `TOP_CONTROL_TAGS`, `RETENTION_TAGS`) | The matcher and typed-specific tests in `src/xp.test.ts`; the SET of six ids is fixed by design — extend matchers, don't add/remove attributes casually. Curriculum `TAG_GROUP` moves also shift the `passing`/`standing`/`legs` matchers through `groupOfTag` ([curriculum.md](curriculum.md)); the `Session` breakdown fields feed `matchesSpecific` ([data-model.md](data-model.md)) |
+| The belt ladder (`BELTS`, `maxStripes`) in `src/belts.ts` | `isValidRank` consumers (`load()` in `src/store.ts`, `fromPromoRow` in `src/sync.ts`) and the `Belt` union — triple-declared with the `belt in (…)` and `promotions_stripes_check` SQL checks ([data-model.md](data-model.md)); the `.belt--{belt}` colors in `src/app.css`; `src/belts.test.ts` |
+| `rankTimeline` / `currentRank` / `undoTarget` rules | The BeltCard "since" line, history and Undo, Home's level-row glyph, and `src/belts.test.ts` — the correction model (a same-day entry replaces the day's earlier one) is what makes fixes and Undo work |
 | `useTodayIso` (moving/removing the interval) | Midnight rollover behavior of every stat on screen |
 
 ## Testing
 
-`src/stats.test.ts` covers each edge named above with fixed `todayIso` values — window boundaries, the weekly `focusProgress` pool (previous-week sessions excluded; empty week → `{0,0,0}`), specific rounds counted into week/volume/year totals, unfinished-week behavior for the streak variants (gi+no-gi needs both kinds per week; focus needs a tagged session, empty tag → 0), `bestWeeklyStreak` (longest historical run beats the tail run; a qualifying current week extends; a non-qualifying one never erases the best; empty → 0), the competition-milestone rules (case-insensitive AJP title match, non-AJP medals excluded, closed/half guard not open guard), pace-clause presence/absence, comp-first tie, same-reference `withSessionTags`. The XP module has its own suite, `src/xp.test.ts`, pinning every formula and matcher above (see [testing.md](testing.md)). Extend them whenever a rule here changes (`npm test` + `npm run build` must be green before any commit).
+`src/stats.test.ts` covers each edge named above with fixed `todayIso` values — window boundaries, the weekly `focusProgress` pool (previous-week sessions excluded; empty week → `{0,0,0}`), specific rounds counted into week/volume/year totals, unfinished-week behavior for the streak variants (gi+no-gi needs both kinds per week; focus needs a tagged session, empty tag → 0), `bestWeeklyStreak` (longest historical run beats the tail run; a qualifying current week extends; a non-qualifying one never erases the best; empty → 0), the competition-milestone rules (case-insensitive AJP title match, non-AJP medals excluded, closed/half guard not open guard), pace-clause presence/absence, comp-first tie, same-reference `withSessionTags`. The XP module has its own suite, `src/xp.test.ts`, pinning every formula and matcher above, and `src/belts.test.ts` pins the ladder, labels, and `currentRank` rules (see [testing.md](testing.md)). Extend them whenever a rule here changes (`npm test` + `npm run build` must be green before any commit).

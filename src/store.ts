@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { isValidRank } from './belts'
 import type { AppData } from './types'
 
 const STORAGE_KEY = 'rollbook:v1'
@@ -24,6 +25,7 @@ export function emptyData(): AppData {
   return {
     sessions: [],
     competitions: [],
+    promotions: [],
     tagList: [...DEFAULT_TAGS],
     focus: { title: '', tag: '' },
     settings: { weeklyGoal: 2, showMilestones: true },
@@ -77,6 +79,16 @@ export function load(): AppData {
         placement: c.placement === 'bronze' || c.placement === 'silver' || c.placement === 'gold' ? c.placement : 'none',
         tags: Array.isArray(c.tags) ? c.tags : [],
       })),
+      // Blobs from before belts gain the empty array; malformed events are dropped.
+      promotions: (Array.isArray(parsed.promotions) ? parsed.promotions : base.promotions).filter(
+        (p) =>
+          typeof p?.id === 'string' &&
+          typeof p.date === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(p.date) &&
+          typeof p.createdAt === 'number' &&
+          typeof p.updatedAt === 'number' &&
+          isValidRank(p),
+      ),
       tagList: Array.isArray(parsed.tagList) && parsed.tagList.length > 0 ? parsed.tagList : base.tagList,
       focus: { ...base.focus, ...parsed.focus },
       settings: {

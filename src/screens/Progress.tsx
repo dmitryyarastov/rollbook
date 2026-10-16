@@ -1,5 +1,7 @@
 import { Check, DotsThree, Flame } from '@phosphor-icons/react'
 import { useMemo } from 'react'
+import type { Rank } from '../belts'
+import { BeltCard } from '../components/BeltCard'
 import { fmtShort } from '../dates'
 import {
   bestWeeklyStreak,
@@ -17,9 +19,10 @@ import { characteristics, characterLevel, sessionsToNext, totalXp, yearXp } from
 interface ProgressProps {
   data: AppData
   todayIso: string
+  onAddPromotion: (rank: Rank, dateIso: string) => void
 }
 
-export function Progress({ data, todayIso }: ProgressProps) {
+export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
   const goal = data.settings.weeklyGoal
   const st = streak(data.sessions, goal, todayIso)
   const vol = volume12w(data.sessions, todayIso)
@@ -77,6 +80,7 @@ export function Progress({ data, todayIso }: ProgressProps) {
 
       <div className="section-label label-row">Levels</div>
       <div className="mrows">
+        <BeltCard promotions={data.promotions} todayIso={todayIso} onAdd={onAddPromotion} />
         <div className="card crow-char">
           <div className="crow-char-head">
             <span className="crow-char-label">Character</span>

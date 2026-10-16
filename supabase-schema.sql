@@ -154,3 +154,38 @@ alter table public.sessions add column if not exists spec_mount integer not null
   check (spec_mount between 0 and 1000);
 alter table public.sessions add column if not exists spec_open integer not null default 0
   check (spec_open between 0 and 1000);
+
+-- ── Belt promotions (added 2026-10) ──────────────────────────────────────────
+-- Rank events: "the rank became belt/stripes on this date". Append-only per
+-- id like sessions — the app's current rank is the latest event, and a
+-- correction is a new event, never an edit (anon still cannot DELETE).
+-- Stripes are 0–4 on colored belts, degrees 0–6 on black; the pull sanitizer
+-- in src/sync.ts (fromPromoRow) enforces the same rule. A missing table is
+-- tolerated by the app (404 → rank events stay local), so this may run
+-- before or after the deploy. Idempotent; run once.
+
+create table if not exists public.promotions (
+  id          text primary key,
+  user_id     text not null default 'dmitrii',
+  date        date not null,
+  belt        text not null check (belt in ('white', 'blue', 'purple', 'brown', 'black')),
+  stripes     integer not null default 0,
+  created_at  timestamptz not null,
+  updated_at  timestamptz not null,
+  constraint promotions_stripes_check check (
+    (belt = 'black' and stripes between 0 and 6) or (belt <> 'black' and stripes between 0 and 4)
+  )
+);
+
+create index if not exists promotions_user_date_idx on public.promotions (user_id, date);
+
+alter table public.promotions enable row level security;
+
+drop policy if exists promotions_select on public.promotions;
+drop policy if exists promotions_insert on public.promotions;
+drop policy if exists promotions_update on public.promotions;
+create policy promotions_select on public.promotions for select to anon using (true);
+create policy promotions_insert on public.promotions for insert to anon with check (user_id = 'dmitrii');
+create policy promotions_update on public.promotions for update to anon using (true) with check (user_id = 'dmitrii');
+
+revoke delete on public.promotions from anon;

@@ -62,6 +62,18 @@ describe('demo seed (through the real stats functions)', () => {
     expect(rolls).toBeLessThan(430)
   })
 
+  it('seeds a two-event rank history that can never sync', () => {
+    const { promotions } = demoData(TODAY)
+    expect(promotions.map((p) => [p.belt, p.stripes])).toEqual([
+      ['white', 4],
+      ['blue', 0],
+    ])
+    for (const p of promotions) {
+      expect(p.id.startsWith('demo-')).toBe(true)
+      expect(p.date <= TODAY && p.date >= '2026-01-01').toBe(true)
+    }
+  })
+
   it('seeds two demo competitions that can never sync', () => {
     const { competitions } = demoData(TODAY)
     expect(competitions).toHaveLength(2)
