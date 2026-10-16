@@ -41,6 +41,7 @@ boundaries are the "what do I paste on an existing project" units. Current secti
 | Competition placement + technique tags (added 2026-08) | `competitions.placement` column (default `'none'`, medal-value check) and `competitions.tags` `text[]` column | `add column if not exists` |
 | Whole-session duration + RPE (added 2026-09) | nullable `sessions.duration_min` integer (1–600) and `sessions.intensity` smallint (1–5) | `add column if not exists`; named constraints guarded through `pg_constraint` |
 | Specific (positional) rounds (added 2026-10) | `sessions.specific` integer `not null default 0` with a `between 0 and 1000` check — positional rounds logged beside free rolls; every round stat counts both | `add column if not exists` |
+| Specific-training formats (added 2026-10) | `sessions.spec_closed` / `spec_mount` / `spec_open` integers `not null default 0`, each with a `between 0 and 1000` check — the per-format breakdown of `specific` (the gym's 2+2-minute swap formats); app-written rows keep `specific = spec_closed + spec_mount + spec_open`, not DB-enforced | `add column if not exists` |
 
 Live status: `20260906065458_add_session_duration_intensity` was applied to project
 `rdhzcvmvtxnzittmclgr` on 6 Sep 2026 before the matching app deploy. The 17 historical
@@ -48,7 +49,10 @@ session rows intentionally remain null for both fields; values are not backfille
 The specific-rounds addendum must likewise run **before** deploying the October 2026 build
 that pushes the `specific` column — session pushes are strict (see the rule below); the
 column's `default 0` is also the correct value for every historical row, so no backfill
-question arises.
+question arises. The same holds for the specific-training-formats addendum and the build
+that pushes `spec_closed`/`spec_mount`/`spec_open`: ALTER first, deploy second, and
+`default 0` is correct for every pre-format row (legacy rows keep an untyped total with a
+zero breakdown).
 
 Applying on an existing project: paste and run **just the new section** in the SQL
 editor. Applying on a fresh project: run the whole file top to bottom.

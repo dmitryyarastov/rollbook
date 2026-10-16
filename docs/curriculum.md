@@ -40,6 +40,44 @@ These are documented deviations, each pinned by a test in `src/curriculum.test.t
 2. **`Half guard` → `guard`.** GB1 technically teaches half guard as side-control recovery; practical usage (how this user tags sessions) treats it as a guard, so it files under Guard.
 3. **`Darce` → `back`** (along with anaconda, guillotine, front headlock). The front-headlock family is turtle-adjacent, so it files under Back & turtle rather than side control or a submissions bucket.
 
+## Owner rulings (2026-10) — authoritative, pinned by the "owner's 2026-10 tag rulings" test
+
+The owner classified his own newer tags; these override any plausible-looking alternative:
+
+- **`SLX` / `single leg x` → `guard`**, and a member of `OPEN_GUARD_TAGS` — it is an open guard, so an SLX-tagged competition satisfies the open-guard milestone.
+- **`Top lock` → `guard`** — a closed-guard variant *despite the name*; it is NOT top control and must not feed that characteristic.
+- **`Side scissors` → `guard`** — a closed-guard improved position.
+- **`Pendulum` → `guard`** (alias of the mapped `pendulum sweep`).
+- **`Double under pass`, `Long step pass` → `passing`** (aliases of `double under` / `long step`).
+- **`Slide by` → `standing`** — a no-gi standing technique (the gi split routes it to the Wrestling · No-Gi characteristic on no-gi sessions).
+- **`Turtle defense` → `back`** — bottom-side turtle work; back & turtle theme, deliberately not top control.
+
+## The 2026-10 vocabulary harvest
+
+~75 additional names (with spelling variants) were researched from GB school curriculum pages and
+reputable BJJ glossaries and folded into `TAG_GROUP`, so tags the owner is likely to type in the
+future arrive pre-mapped — modern guards (k-guard, reverse DLR, worm/lapel guards), wrestling
+vocabulary (blast double, duck under, collar tie), passing systems (headquarters, pressure passing,
+sao paulo), pins and back attacks (scarf hold, gift wrap, body triangle, neckties), and the
+leg-lock game (inside/outside heel hook, saddle synonyms 411/honey hole/inside sankaku, reaps,
+calf slicers). Unambiguous open guards joined `OPEN_GUARD_TAGS` (z-guard and rubber guard
+deliberately did not — half-guard family and closed-guard system respectively), and unambiguous
+top-position work joined `TOP_CONTROL_TAGS` in `src/xp.ts` (buggy choke, escapes, and turtle-bottom
+stayed out — bottom work). Spot-pinned by the "2026-10 vocabulary harvest" tests. Known-rare names
+were deliberately skipped (squid/octopus/williams guard, cement mixer, banana split, …) — unknown
+tags falling into Other remains the correct, predictable behavior.
+
+## Live-data audit (2026-10-16)
+
+A review queried the live synced tag list and found four real tags still in Other; they were mapped by precedent with the app's existing entries (research-based, not owner rulings — revisit if the owner disagrees):
+
+- **`Yoko Tomoe Nage` → `standing`** — side variant of the harvested `tomoe nage`.
+- **`Opening Closed Guard` → `passing`** — same technique as `guard break`; GB teaches it in the guard-top weeks.
+- **`Cow catcher` → `back`**, and in `TOP_CONTROL_TAGS` — front-headlock control from the top, filed like `front headlock`.
+- **`Half Butterfly` → `guard`**, **not** in `OPEN_GUARD_TAGS` — **owner ruling (2026-10-16): it is a half-guard variant**, so like z-guard it does not satisfy the open-guard milestone.
+
+Pinned by the "maps every tag in the live synced data" test. After any new tag appears in real use, re-run the audit query in [operations.md](operations.md)'s spirit: every live tag should land in a real group.
+
 ## Public API and semantics
 
 - `groupOfTag(tag: string): CurriculumGroupId` — normalized exact lookup, `'other'` fallback.

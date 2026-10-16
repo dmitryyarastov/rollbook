@@ -79,7 +79,8 @@ save real-looking test entries against the live backend.
    sanitizer (`sync.ts`), SQL check (`supabase-schema.sql`) — and must stay
    in lockstep: `RoundMin`, `SessionIntensity`, `CardioRating`, the competition
    `Placement`, the session `time` HH:MM regex, and the session-duration and
-   specific-round (0–1000) bounds.
+   specific-round (0–1000) bounds — the `specific` total and each of
+   `spec_closed`/`spec_mount`/`spec_open`.
 7. **Design is law** (see docs/design-system.md): Inter 400/500 only; accent
    `#9184d9` only as lines/borders/glows/text marks, never a large fill;
    outlined buttons; component CSS appended to `src/app.css` as ordered
@@ -104,6 +105,17 @@ save real-looking test entries against the live backend.
   rounds stepper took its place in the Log form, and the focus card tracks
   the **current week**, not a 30-day window — don't resurrect either old
   behavior casually.
+- Specific rounds are **typed by format** (also October 2026): the gym runs
+  2+2-minute positional swap rounds where each side plays both roles —
+  closed guard retention/passing, mount escape/control, open guard passing.
+  The Log form has one stepper per format (`specClosed`/`specMount`/`specOpen`);
+  `saveSession` stores their sum as `specific`, which stays the only field
+  round stats read. Because every swap round trains both sides, the guard
+  formats feed **both** the Passing and Guard retention characteristics and
+  the mount format feeds Top control (the escape side has no attribute) —
+  that both-sides crediting is deliberate, not double counting (one flat
+  25 XP per session per attribute). Legacy rows keep an untyped `specific`
+  total with a zero breakdown.
 - Tag ordering is display-time only; the persisted `tagList` is append-only
   master data. The GB curriculum mapping has three documented judgment calls
   (Escapes→side control, Half guard→guard, Darce→back & turtle) pinned by

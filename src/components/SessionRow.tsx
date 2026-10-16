@@ -34,8 +34,26 @@ export function SessionRow({ session: s, expanded = false, onClick }: SessionRow
       {expanded && (
         <span className="srow-panel">
           <span className="srow-stats">
-            {/* Neutral count, shown only when the session actually logged some. */}
-            {s.specific > 0 && (
+            {/* Typed specific rounds when the breakdown exists; legacy total otherwise. */}
+            {s.specClosed > 0 && (
+              <span className="srow-stat">
+                <span className="srow-stat-n">{s.specClosed}</span>
+                <span className="micro">CLOSED GD</span>
+              </span>
+            )}
+            {s.specMount > 0 && (
+              <span className="srow-stat">
+                <span className="srow-stat-n">{s.specMount}</span>
+                <span className="micro">MOUNT</span>
+              </span>
+            )}
+            {s.specOpen > 0 && (
+              <span className="srow-stat">
+                <span className="srow-stat-n">{s.specOpen}</span>
+                <span className="micro">OPEN GD</span>
+              </span>
+            )}
+            {s.specific > 0 && s.specClosed + s.specMount + s.specOpen === 0 && (
               <span className="srow-stat">
                 <span className="srow-stat-n">{s.specific}</span>
                 <span className="micro">SPECIFIC</span>

@@ -13,8 +13,16 @@ export interface Session {
   gi: boolean
   /** Free-sparring rounds. Round-based stats count rolls + specific together. */
   rolls: number
-  /** Positional ("specific") sparring rounds; 0 on rows from before the split. */
+  /** Positional ("specific") sparring rounds, total; 0 on rows from before the split. */
   specific: number
+  /**
+   * Per-format breakdown of `specific` — the gym's 2+2-minute swap rounds
+   * (each side plays both roles). Zero on rows from before the formats
+   * existed; app-written rows keep specific === closed + mount + open.
+   */
+  specClosed: number
+  specMount: number
+  specOpen: number
   /** Submission counting retired from the UI 2026-10; kept for historical rows. */
   subsFor: number
   subsAgainst: number
@@ -88,7 +96,9 @@ export type GiFilter = 'All' | 'Gi' | 'No-Gi'
 
 export interface LogForm {
   rolls: number
-  specific: number
+  specClosed: number
+  specMount: number
+  specOpen: number
   roundMin: RoundMin
   /** Whole class/open-mat duration in minutes. */
   durationMin: number

@@ -40,6 +40,9 @@ interface SessionRow {
   gi: boolean
   rolls: number
   specific: number
+  spec_closed: number
+  spec_mount: number
+  spec_open: number
   subs_for: number
   subs_against: number
   round_min: number
@@ -60,6 +63,9 @@ export function toRow(s: Session): SessionRow {
     gi: s.gi,
     rolls: s.rolls,
     specific: s.specific,
+    spec_closed: s.specClosed,
+    spec_mount: s.specMount,
+    spec_open: s.specOpen,
     subs_for: s.subsFor,
     subs_against: s.subsAgainst,
     round_min: s.roundMin,
@@ -104,6 +110,9 @@ export function fromRow(r: unknown): Session | null {
     gi: o.gi === true,
     rolls: count(o.rolls),
     specific: Math.min(1000, count(o.specific)),
+    specClosed: Math.min(1000, count(o.spec_closed)),
+    specMount: Math.min(1000, count(o.spec_mount)),
+    specOpen: Math.min(1000, count(o.spec_open)),
     subsFor: count(o.subs_for),
     subsAgainst: count(o.subs_against),
     roundMin,
@@ -246,14 +255,18 @@ interface Mergeable {
  * same array reference when nothing changed (React bailout). One generic so
  * session and competition merge semantics can never drift.
  */
-function mergeById<T extends Mergeable>(local: T[], remote: T[]): T[] {
+function mergeById<T extends Mergeable>(
+  local: T[],
+  remote: T[],
+  preferRemoteOnTie?: (l: T, r: T) => boolean,
+): T[] {
   const remoteById = new Map<string, T>()
   for (const r of remote) if (isPushable(r)) remoteById.set(r.id, r)
   let changed = false
   const out = local.map((l) => {
     const r = remoteById.get(l.id)
     remoteById.delete(l.id)
-    if (r && r.updatedAt > l.updatedAt) {
+    if (r && (r.updatedAt > l.updatedAt || (r.updatedAt === l.updatedAt && (preferRemoteOnTie?.(l, r) ?? false)))) {
       changed = true
       return r
     }
@@ -270,7 +283,21 @@ function mergeById<T extends Mergeable>(local: T[], remote: T[]): T[] {
   return changed ? out : local
 }
 
-export const mergeSessions = (local: Session[], remote: Session[]): Session[] => mergeById(local, remote)
+/**
+ * Version-skew repair for the typed specific breakdown. An older build drops
+ * spec_* on pull; after it updates, load() backfills zeros — the same row at
+ * the same updatedAt, minus the breakdown. Left to "ties keep local", that
+ * device would push its zeros over the real values forever. On a tie, a
+ * non-zero remote breakdown with the same total therefore beats an all-zero
+ * local one, so backfilled zeros can never become authoritative.
+ */
+const recoversBreakdown = (l: Session, r: Session): boolean =>
+  l.specClosed + l.specMount + l.specOpen === 0 &&
+  r.specClosed + r.specMount + r.specOpen > 0 &&
+  r.specific === l.specific
+
+export const mergeSessions = (local: Session[], remote: Session[]): Session[] =>
+  mergeById(local, remote, recoversBreakdown)
 export const mergeCompetitions = (local: Competition[], remote: Competition[]): Competition[] =>
   mergeById(local, remote)
 

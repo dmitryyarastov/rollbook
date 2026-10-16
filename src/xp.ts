@@ -131,9 +131,44 @@ const TOP_CONTROL_TAGS = new Set([
   'darce',
   "d'arce",
   'anaconda',
+  'cow catcher',
+  // 2026-10 vocabulary harvest — unambiguous top-position work only (buggy
+  // choke, ghost/running escapes, turtle bottom etc. are bottom work and
+  // deliberately absent).
+  'scarf hold',
+  'scarf hold control',
+  'reverse kesa gatame',
+  'reverse kesa',
+  'reverse scarf hold',
+  'north south choke',
+  'north-south choke',
+  'bread cutter',
+  'bread cutter choke',
+  'arm triangle',
+  'head and arm choke',
+  'kata gatame',
+  'mounted triangle',
+  'triangle from mount',
+  'baseball bat choke',
+  'baseball choke',
+  'gift wrap',
+  'giftwrap',
+  'monoplata',
+  'body triangle',
+  'rear mount',
+  'back mount',
+  'straight jacket',
+  'straitjacket',
+  'straight jacket system',
+  'rear triangle',
+  'back triangle',
+  'peruvian necktie',
+  'japanese necktie',
+  'turtle attacks',
+  'turtle top',
 ])
 
-const RETENTION_TAGS = new Set(['guard retention', 'retention', 'guard recovery'])
+const RETENTION_TAGS = new Set(['guard retention', 'retention', 'guard recovery', 'granby roll', 'granby'])
 
 const norm = (tag: string) => tag.trim().toLowerCase()
 
@@ -142,6 +177,12 @@ export interface Characteristic {
   label: string
   /** Does this tag (in a gi/no-gi context) feed the attribute? */
   matches: (tag: string, gi: boolean) => boolean
+  /**
+   * Does the session's typed specific work feed it? Each 2+2 swap round
+   * works both sides: guard formats train passing AND retention; the mount
+   * format trains top control (the escape side has no attribute).
+   */
+  matchesSpecific?: (s: Session) => boolean
 }
 
 /**
@@ -149,13 +190,30 @@ export interface Characteristic {
  * to upgrade across his whole BJJ journey. The SET is stable by design (an
  * RPG character sheet, not a tag cloud); only its tag matchers may grow.
  */
+const guardSpecific = (s: Session) => s.specClosed > 0 || s.specOpen > 0
+
 export const CHARACTERISTICS: Characteristic[] = [
-  { id: 'passing', label: 'Passing', matches: (t) => groupOfTag(t) === 'passing' },
-  { id: 'retention', label: 'Guard retention', matches: (t) => RETENTION_TAGS.has(norm(t)) },
+  {
+    id: 'passing',
+    label: 'Passing',
+    matches: (t) => groupOfTag(t) === 'passing',
+    matchesSpecific: guardSpecific,
+  },
+  {
+    id: 'retention',
+    label: 'Guard retention',
+    matches: (t) => RETENTION_TAGS.has(norm(t)),
+    matchesSpecific: guardSpecific,
+  },
   { id: 'takedowns-gi', label: 'Takedowns · Gi', matches: (t, gi) => gi && groupOfTag(t) === 'standing' },
   { id: 'wrestling-nogi', label: 'Wrestling · No-Gi', matches: (t, gi) => !gi && groupOfTag(t) === 'standing' },
   { id: 'leglocks', label: 'Leg locks', matches: (t) => groupOfTag(t) === 'legs' },
-  { id: 'top-control', label: 'Top control', matches: (t) => TOP_CONTROL_TAGS.has(norm(t)) },
+  {
+    id: 'top-control',
+    label: 'Top control',
+    matches: (t) => TOP_CONTROL_TAGS.has(norm(t)),
+    matchesSpecific: (s) => s.specMount > 0,
+  },
 ]
 
 const SESSION_CHAR_XP = 25
@@ -174,7 +232,8 @@ export interface CharacteristicState extends LevelState {
 export function characteristics(sessions: Session[], competitions: Competition[]): CharacteristicState[] {
   return CHARACTERISTICS.map((c) => {
     let xp = 0
-    for (const s of sessions) if (s.tags.some((t) => c.matches(t, s.gi))) xp += SESSION_CHAR_XP
+    for (const s of sessions)
+      if (s.tags.some((t) => c.matches(t, s.gi)) || (c.matchesSpecific?.(s) ?? false)) xp += SESSION_CHAR_XP
     for (const k of competitions) if (k.tags.some((t) => c.matches(t, k.gi))) xp += COMP_CHAR_XP
     return { id: c.id, label: c.label, xp, ...characteristicLevel(xp) }
   })

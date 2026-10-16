@@ -748,18 +748,32 @@
   text-align: center;
   margin-top: 16px;
 }
+.spec-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.spec-row-label {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-neutral-300);
+}
 .spec-stepper {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  margin-top: 10px;
 }
 .spec-count {
   font-weight: 500;
-  font-size: 30px;
+  font-size: 18px;
   line-height: 1;
-  min-width: 34px;
+  min-width: 26px;
   text-align: center;
 }
 

@@ -128,21 +128,34 @@ export function Log({
             <div className="log-count">{form.rolls}</div>
             <Stepper kind="plus" size="lg" accent label="More rounds" onClick={() => onPatch({ rolls: form.rolls + 1 })} />
           </div>
-          <div className="spec-label">SPECIFIC</div>
-          <div className="spec-stepper">
-            <Stepper
-              kind="minus"
-              size="sm"
-              label="Fewer specific rounds"
-              onClick={() => onPatch({ specific: Math.max(0, form.specific - 1) })}
-            />
-            <div className="spec-count">{form.specific}</div>
-            <Stepper
-              kind="plus"
-              size="sm"
-              label="More specific rounds"
-              onClick={() => onPatch({ specific: form.specific + 1 })}
-            />
+          <div className="spec-label">SPECIFIC · 2+2 MIN SWAP ROUNDS</div>
+          <div className="spec-grid">
+            {(
+              [
+                { key: 'specClosed', label: 'Closed guard' },
+                { key: 'specMount', label: 'Mount' },
+                { key: 'specOpen', label: 'Open guard' },
+              ] as const
+            ).map(({ key, label }) => (
+              <div key={key} className="spec-row">
+                <div className="spec-row-label">{label}</div>
+                <div className="spec-stepper">
+                  <Stepper
+                    kind="minus"
+                    size="sm"
+                    label={`Fewer ${label.toLowerCase()} specific rounds`}
+                    onClick={() => onPatch({ [key]: Math.max(0, form[key] - 1) } as Partial<LogForm>)}
+                  />
+                  <div className="spec-count">{form[key]}</div>
+                  <Stepper
+                    kind="plus"
+                    size="sm"
+                    label={`More ${label.toLowerCase()} specific rounds`}
+                    onClick={() => onPatch({ [key]: form[key] + 1 } as Partial<LogForm>)}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
           <div className="dur-row">
             {DUR_OPTIONS.map((d) => (

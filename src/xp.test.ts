@@ -23,6 +23,9 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     gi: true,
     rolls: 4,
     specific: 0,
+    specClosed: 0,
+    specMount: 0,
+    specOpen: 0,
     subsFor: 0,
     subsAgainst: 0,
     roundMin: 5,
@@ -164,6 +167,54 @@ describe('characteristics', () => {
     const states = characteristics([mk(TODAY, { tags: ['Escapes', 'Mount'] })], [])
     expect(byId(states, 'top-control').xp).toBe(25) // Mount yes, Escapes no
     expect(byId(characteristics([mk(TODAY, { tags: ['Escapes'] })], []), 'top-control').xp).toBe(0)
+  })
+
+  it('harvested vocabulary feeds the right attributes', () => {
+    const states = characteristics(
+      [
+        mk(TODAY, { gi: false, tags: ['Blast double'] }), // wrestling no-gi
+        mk(TODAY, { tags: ['Granby roll'] }), // retention
+        mk(TODAY, { tags: ['Gift wrap', 'Buggy choke'] }), // top control (buggy is bottom — no double count)
+        mk(TODAY, { tags: ['Inside heel hook'] }), // leg locks
+      ],
+      [],
+    )
+    expect(byId(states, 'wrestling-nogi').xp).toBe(25)
+    expect(byId(states, 'retention').xp).toBe(25)
+    expect(byId(states, 'top-control').xp).toBe(25)
+    expect(byId(states, 'leglocks').xp).toBe(25)
+    expect(byId(characteristics([mk(TODAY, { tags: ['Buggy choke'] })], []), 'top-control').xp).toBe(0)
+  })
+
+  it('the live-audit tags feed their attributes', () => {
+    const states = characteristics(
+      [
+        mk(TODAY, { gi: true, tags: ['Yoko Tomoe Nage'] }), // takedowns gi
+        mk(TODAY, { tags: ['Opening Closed Guard'] }), // passing
+        mk(TODAY, { gi: false, tags: ['Cow catcher'] }), // top control
+      ],
+      [],
+    )
+    expect(byId(states, 'takedowns-gi').xp).toBe(25)
+    expect(byId(states, 'passing').xp).toBe(25)
+    expect(byId(states, 'top-control').xp).toBe(25)
+  })
+
+  it('typed specific rounds feed characteristics without tags', () => {
+    const states = characteristics(
+      [
+        mk(TODAY, { specClosed: 2 }), // guard format: passing + retention
+        mk(TODAY, { specMount: 1 }), // mount format: top control only
+      ],
+      [],
+    )
+    expect(byId(states, 'passing').xp).toBe(25)
+    expect(byId(states, 'retention').xp).toBe(25)
+    expect(byId(states, 'top-control').xp).toBe(25)
+    expect(byId(states, 'leglocks').xp).toBe(0)
+    // a session qualifying via BOTH a tag and specific work still counts once
+    const both = characteristics([mk(TODAY, { tags: ['Knee cut'], specOpen: 1 })], [])
+    expect(byId(both, 'passing').xp).toBe(25)
   })
 
   it('competitions feed 60 and levels derive from xp', () => {

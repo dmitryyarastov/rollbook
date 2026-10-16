@@ -9,9 +9,10 @@ Five screens behind a bottom tab bar; the raised center tab is the
 ~30-second post-class logging flow, with a Training / Competition toggle —
 competition entries record matches (outcome, points, submission), one
 cardio rating for the event, a podium placement, the techniques worked,
-and what worked / what didn't. Training entries record free-sparring and
-positional ("specific") rounds, round length, and whole-session duration
-plus 1–5 RPE for downstream training-load analysis.
+and what worked / what didn't. Training entries record free-sparring rounds
+and positional ("specific") rounds typed by the gym's 2+2-minute swap
+formats — closed guard, mount, open guard — plus round length and
+whole-session duration with 1–5 RPE for downstream training-load analysis.
 
 System documentation for contributors (and AI agents) lives in
 [docs/](docs/) — architecture, data model, sync protocol, stats semantics,
@@ -59,9 +60,10 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
   you haven't run yet — all are idempotent. The "Session start time" ALTER is
   **required** for builds with the When picker, the "Competition placement
   + technique tags" ALTER for builds with the goals feature, the "Whole-session
-  duration + RPE" ALTER for builds deployed from September 2026, and the
-  "Specific (positional) rounds" ALTER for builds from October 2026:
-  until the applicable section runs,
+  duration + RPE" ALTER for builds deployed from September 2026, the
+  "Specific (positional) rounds" ALTER for builds from October 2026, and the
+  "Specific-training formats" ALTER (spec_closed / spec_mount / spec_open)
+  for builds from mid-October 2026: until the applicable section runs,
   pushes to that table 400 and sync shows an error (data stays safe locally).
   A missing competitions table is merely tolerated (comps stay local until it
   exists) — the tolerance covers the whole table, not a missing column.
@@ -105,10 +107,14 @@ parameterized by a local-date `todayIso` and covered by tests:
 - **Characteristics** are six fixed lifelong attributes — passing, guard
   retention, takedowns (gi), wrestling (no-gi), leg locks, top control —
   that level up (on a faster 50/25 curve) from a flat 25 XP per session or
-  60 per competition whose tags touch them. Flat per entry, so tagging one
-  session ten ways doesn't grind; the standing group splits by the session's
-  gi flag, and escapes deliberately don't count as top control. The set is
-  fixed by design; only the tag matching may grow.
+  60 per competition whose tags touch them. Typed specific rounds count
+  too: the 2+2 swap formats work both sides, so guard-format rounds
+  (closed or open) feed both passing and guard retention, and mount rounds
+  feed top control. Flat per entry, so tagging one session ten ways doesn't
+  grind — and a session qualifying via both a tag and specific work still
+  counts once; the standing group splits by the session's gi flag, and
+  escapes deliberately don't count as top control. The set is fixed by
+  design; only the matching may grow.
 - **Technique counts** use a 30-day window ending today. **Focus progress**
   = share of the current Monday-start week's sessions tagged with the
   focus's linked tag ("Focus this week"). Submission counting was retired
@@ -173,10 +179,13 @@ styled in-system:
 - **Session load card**: a 15-minute whole-class duration stepper and 1–5
   session-RPE chips. Both reset to 60 minutes / RPE 3 after each save so a
   previous class's per-session facts cannot silently carry forward.
-- **Specific rounds** (October 2026): a compact stepper in the Rounds card
-  logs positional-sparring rounds beside free rolls; every round stat counts
-  the two together. The prototype's Submissions card was retired at the same
-  time — old sessions keep and display their historical sub tallies.
+- **Specific rounds** (October 2026): compact steppers in the Rounds card
+  log positional-sparring rounds beside free rolls — one labeled row per
+  format of the gym's 2+2-minute swap rounds (closed guard, mount, open
+  guard; each side plays both roles); every round stat counts the specific
+  total together with free rolls. The prototype's Submissions card was
+  retired at the same time — old sessions keep and display their historical
+  sub tallies, and pre-format sessions show an untyped specific total.
 - **XP, levels & characteristics** (October 2026): a character-level row on
   Home and an Experience section on Progress (XP stat tiles + a year
   sparkline), plus six lifelong characteristics as level cards — all pure

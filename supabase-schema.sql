@@ -139,3 +139,18 @@ end $$;
 
 alter table public.sessions add column if not exists specific integer not null default 0
   check (specific between 0 and 1000);
+
+-- ── Specific-training formats (added 2026-10) ────────────────────────────────
+-- Per-format breakdown of the specific (positional) rounds: the gym's
+-- 2+2-minute swap formats — closed guard retention/passing, mount
+-- escape/control, open guard passing. App-written rows keep
+-- specific = spec_closed + spec_mount + spec_open (not DB-enforced; the
+-- client sanitizer clamps each field). Idempotent; apply BEFORE deploying
+-- the build that pushes these columns.
+
+alter table public.sessions add column if not exists spec_closed integer not null default 0
+  check (spec_closed between 0 and 1000);
+alter table public.sessions add column if not exists spec_mount integer not null default 0
+  check (spec_mount between 0 and 1000);
+alter table public.sessions add column if not exists spec_open integer not null default 0
+  check (spec_open between 0 and 1000);

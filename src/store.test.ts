@@ -87,6 +87,15 @@ describe('load', () => {
     expect(load().sessions[0].rolls).toBe(4)
   })
 
+  it('backfills the typed specific breakdown to zeros on older blobs', () => {
+    stubStorage(JSON.stringify({ sessions: [{ ...session, specific: 2 }] }))
+    const s = load().sessions[0]
+    expect([s.specClosed, s.specMount, s.specOpen]).toEqual([0, 0, 0])
+    expect(s.specific).toBe(2)
+    stubStorage(JSON.stringify({ sessions: [{ ...session, specMount: 'junk', specOpen: 2 }] }))
+    expect([load().sessions[0].specMount, load().sessions[0].specOpen]).toEqual([0, 2])
+  })
+
   it('backfills specific rounds to 0 for blobs from before the split', () => {
     stubStorage(JSON.stringify({ sessions: [session] }))
     expect(load().sessions[0].specific).toBe(0)

@@ -11,7 +11,7 @@ Keep that split. Everything in `src/sync.ts` is unit-testable with a stub fetch 
 
 ## Why the blind full-table push is safe (load-bearing invariant)
 
-`src/sync.ts` — `pushAll` upserts **every** local non-demo session and competition on every push, with `Prefer: resolution=merge-duplicates` and `on_conflict=id`. It never pulls first. This is only correct because **sessions and competitions are append-only per id by design**: a row, once created, is never edited or deleted in the UI, so a stale device re-upserting its copy writes back byte-identical data. **If you ever add an edit or delete feature for sessions or competitions, this invariant breaks** — a device that has been offline will overwrite a newer edit with its stale copy. The required change is a pull-before-every-push (merge, then push the merged result), not a smarter payload. The header comment in `src/sync.ts` says the same thing; keep both in agreement.
+`src/sync.ts` — `pushAll` upserts **every** local non-demo session and competition on every push, with `Prefer: resolution=merge-duplicates` and `on_conflict=id`. It never pulls first. This is only correct because **sessions and competitions are append-only per id by design**: a row, once created, is never edited or deleted in the UI, so a stale device re-upserting its copy writes back byte-identical data — **with one exception: version skew when a column is added.** A device still on the old build pulls new rows through its old `fromRow`, silently dropping the new field; once it updates, `load()` backfills the default, and its next full-table push writes that default over the real remote value (see the tie-break below for how `spec_*` is protected, and the playbook step for future columns). **If you ever add an edit or delete feature for sessions or competitions, this invariant breaks** — a device that has been offline will overwrite a newer edit with its stale copy. The required change is a pull-before-every-push (merge, then push the merged result), not a smarter payload. The header comment in `src/sync.ts` says the same thing; keep both in agreement.
 
 Payload size is a non-issue for years: ~500 sessions ≈ 150 KB. PostgREST caps GET responses at 1000 rows; the pull orders `updated_at.desc` so a hypothetical overflow drops the *oldest* rows, not the newest.
 
@@ -21,7 +21,7 @@ There are two independent last-write-wins mechanisms; do not conflate them.
 
 | Clock | Scope | Field | Tie behavior | Zero value |
 |---|---|---|---|---|
-| Per-row | each `Session` / `Competition` | `updatedAt` (epoch ms locally, `updated_at` timestamptz remotely) | strictly-newer remote wins; **ties keep local** | n/a — always set at creation |
+| Per-row | each `Session` / `Competition` | `updatedAt` (epoch ms locally, `updated_at` timestamptz remotely) | strictly-newer remote wins; **ties keep local** — except the sessions-only `recoversBreakdown` tie-break (below) | n/a — always set at creation |
 | Single blob | `focus` + `tagList` + `settings` together | `AppData.stateUpdatedAt` | remote adopted only if strictly newer | `0` = "never touched locally" |
 
 `stateUpdatedAt === 0` gates the `app_state` push in `pushAll`: a fresh install that has never edited focus/tags/settings must not overwrite the remote blob with defaults. Every call site that mutates focus/tagList/settings must stamp `stateUpdatedAt: Date.now()` in the same `update()` (see `src/App.tsx` — `addTag`, `setFocus`); a mutation without the stamp will never sync.
@@ -67,7 +67,7 @@ All with `Prefer: resolution=merge-duplicates,return=minimal`. `isPushable` (`sr
 
 `src/sync.ts` — `mergeById<T extends Mergeable>` is one generic used by both `mergeSessions` and `mergeCompetitions` **so session and competition merge semantics can never drift** — do not fork it. Rules, per id:
 
-1. Strictly-newer remote (`r.updatedAt > l.updatedAt`) replaces local; **ties keep local** (so a re-pull of your own push is a no-op).
+1. Strictly-newer remote (`r.updatedAt > l.updatedAt`) replaces local; **ties keep local** (so a re-pull of your own push is a no-op). `mergeById` takes an optional `preferRemoteOnTie(l, r)` predicate; `mergeSessions` passes `recoversBreakdown`, which on an exact tie lets a remote row with a **non-zero typed specific breakdown** replace a local row whose breakdown is **all zero with the same `specific` total**. This repairs the version-skew case (an old build dropped `spec_*` on pull, the new build backfilled zeros) — without it the zeroed device pushes its zeros over the real values on every push, flip-flopping with the device that logged them. The rule is one-directional by construction: real local values are never replaced by remote zeros, and a different total is treated as a different fact (no replacement). Pinned by the "version skew" test in `src/sync.test.ts`.
 2. Remote-only rows are appended, sorted by `date` asc then `createdAt` asc (string compare on the yyyy-mm-dd date — correct, and no JS `Date` involved).
 3. Local-only rows are **always kept** — remote is not authoritative for deletions; a tampered/emptied remote table can never erase local history. (A real hand-tampered `demo-99` row was once found in the DB and was invisible in-app because of the demo filter + this rule.)
 4. Remote `demo-` rows are filtered out via `isPushable` before merging.
@@ -93,6 +93,7 @@ With no auth, every remote row is attacker-writable, so `pullAll` maps everythin
 | `gi` | `=== true`, else `false` |
 | `rolls`, `subs_for`, `subs_against` | `count()`: number-coerced, rounded, floored at 0 (`subs_*` persist for historical rows only — the UI stopped counting 2026-10) |
 | `specific` | `count()` additionally capped at 1000 — `Math.min(1000, count(…))`, matching the SQL `specific between 0 and 1000` check |
+| `spec_closed`, `spec_mount`, `spec_open` | same rule as `specific` — `Math.min(1000, count(…))` each, matching the three SQL `between 0 and 1000` checks (the typed specific-format breakdown; sanitized independently, the total/sum lockstep is an app-write guarantee, not a pull-side repair) |
 | `round_min` | must be in `[4, 5, 6, 8]` (`ROUND_MINS`), else `5` |
 | `duration_min` | integer 1–600, else `null` (legacy-compatible) |
 | `intensity` | must be in `[1, 2, 3, 4, 5]` (`SESSION_INTENSITIES`), else `null` |
@@ -119,7 +120,7 @@ The caps matter: `matches` is a jsonb column and `supabase-schema.sql` only chec
 | pull/push `sessions`, `app_state` | any non-ok | throw → `fail()` | strict |
 | any request | > 10 s | `AbortSignal.timeout` rejects → `fail()` | paused Supabase project hangs otherwise |
 
-A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s. A sessions push missing `duration_min`/`intensity` or `specific` does the same, so each matching addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
+A missing **column** on an existing table is deliberately loud, not tolerated: PostgREST answers **400 (PGRST204)** when a pushed payload names an unknown column. That 400 fails the whole push and shows "sync error". This is by design — it forces the ALTER-before-deploy ordering below rather than silently dropping data. It applies to competitions too: their 404 tolerance covers only the *whole table* missing — a comp push against a table lacking the `placement`/`tags` columns 400s. A sessions push missing `duration_min`/`intensity`, `specific`, or the format breakdown `spec_closed`/`spec_mount`/`spec_open` does the same, so each matching addendum in `supabase-schema.sql` must run before deploying the build that pushes those columns.
 
 ## SyncStatus lifecycle
 
@@ -131,15 +132,16 @@ A missing **column** on an existing table is deliberately loud, not tolerated: P
 
 ## Playbook: adding a synced field to sessions
 
-Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; session `SessionIntensity` / `SESSION_INTENSITIES` / `intensity between 1 and 5`; competition `Placement`; and the matching `time` regex). Bounded numeric fields such as `duration_min` and `specific` must match sanitizer and SQL bounds too. The October 2026 specific-rounds addendum (`specific` integer, default 0, 0–1000 both in the sanitizer cap and the SQL check) is the latest worked example; September 2026's duration/RPE is the nullable-field variant.
+Whitelisted value sets are **triple-declared** — TS union, pull-sanitizer whitelist, SQL CHECK — and all three must accept/reject identically (e.g. `RoundMin` `4|5|6|8`; session `SessionIntensity` / `SESSION_INTENSITIES` / `intensity between 1 and 5`; competition `Placement`; and the matching `time` regex). Bounded numeric fields such as `duration_min`, `specific`, and the `spec_closed`/`spec_mount`/`spec_open` breakdown must match sanitizer and SQL bounds too. The October 2026 specific-training-formats addendum (three integer columns, default 0, 0–1000 both in the sanitizer cap and the SQL check) is the latest worked example — it followed the same month's single `specific` column; September 2026's duration/RPE is the nullable-field variant.
 
 1. **`src/types.ts`** — add the field to `Session` (union type if it's an enum).
 2. **`src/store.ts` — `load`** — default the field for pre-existing localStorage blobs (as `time: typeof s.time === 'string' ? s.time : null` does).
 3. **`src/sync.ts`** — extend `SessionRow`, `toRow`, and `fromRow` (sanitizer rule: drop-row vs clamp, matching the table above).
-4. **`supabase-schema.sql`** — append a new delimited, **idempotent** addendum section (`alter table … add column if not exists`, plus a CHECK mirroring the TS/sanitizer whitelist). Never edit earlier sections — they are a run history. The anon key cannot DDL; the owner pastes the section into the Supabase SQL editor by hand.
+4. **`supabase-schema.sql`** — append a new delimited, **idempotent** addendum section (`alter table … add column if not exists`, plus a CHECK mirroring the TS/sanitizer whitelist). Never edit earlier sections — they are a run history. The anon key cannot DDL: apply the section through the Supabase MCP server (`apply_migration`, connected for training-hub sessions since 2026-10) after showing the owner the SQL, or have the owner paste it into the Supabase SQL editor.
 5. **Ordering: run the ALTER before deploying the build that pushes the column.** A push from the new build against the old schema is a 400 (PGRST204) and sync goes loud-red until the ALTER runs. Pushing to `main` deploys (GitHub Pages), so: run SQL first, then push the commit.
 6. **`src/sync.test.ts`** — extend the round-trip test (`fromRow(toRow(s))` ms-exact) and add malformed-value cases for the sanitizer rule.
-7. `npm test` and `npm run build` green before commit (see [testing.md](testing.md), [operations.md](operations.md)).
+7. **Decide the version-skew story.** Any device still on the previous build will pull new rows and drop the field; after it updates, `load()` backfills your default and the next full-table push writes that default over the real value. If the default is information-free for display only (e.g. a `null` that just hides a meta segment), accepting a lost value may be fine — say so in the commit. If the value feeds anything (XP, stats), add a `preferRemoteOnTie` rule like `recoversBreakdown` so a non-default remote beats a backfilled local default on an exact `updatedAt` tie, and pin it with a test.
+8. `npm test` and `npm run build` green before commit (see [testing.md](testing.md), [operations.md](operations.md)).
 
 ## Playbook: adding a synced entity (a new table)
 

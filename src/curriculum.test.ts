@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CURRICULUM_GROUPS, groupOfTag, groupTagsByCurriculum, orderTagsByCurriculum } from './curriculum'
+import { CURRICULUM_GROUPS, groupOfTag, groupTagsByCurriculum, isOpenGuardTag, orderTagsByCurriculum } from './curriculum'
 import { DEFAULT_TAGS } from './store'
 
 /** The real synced tagList as of 2026-08 — the order tags were added. */
@@ -85,6 +85,43 @@ describe('groupOfTag judgment calls (documented deviations)', () => {
 
   it("files 'Darce' under back & turtle (front-headlock family)", () => {
     expect(groupOfTag('Darce')).toBe('back')
+  })
+
+  it("pins the owner's 2026-10 tag rulings", () => {
+    expect(groupOfTag('SLX')).toBe('guard')
+    expect(groupOfTag('Top lock')).toBe('guard') // closed guard despite the name
+    expect(groupOfTag('Side scissors')).toBe('guard')
+    expect(groupOfTag('Pendulum')).toBe('guard')
+    expect(groupOfTag('Double under pass')).toBe('passing')
+    expect(groupOfTag('Long step pass')).toBe('passing')
+    expect(groupOfTag('Slide by')).toBe('standing')
+    expect(groupOfTag('Turtle defense')).toBe('back')
+    expect(isOpenGuardTag('SLX')).toBe(true) // open guard — counts for the comp milestone
+    expect(isOpenGuardTag('Top lock')).toBe(false) // closed guard — does not
+  })
+
+  it('maps every tag in the live synced data (2026-10-16 audit)', () => {
+    expect(groupOfTag('Yoko Tomoe Nage')).toBe('standing')
+    expect(groupOfTag('Opening Closed Guard')).toBe('passing')
+    expect(groupOfTag('Cow catcher')).toBe('back')
+    expect(groupOfTag('Half Butterfly')).toBe('guard')
+    expect(isOpenGuardTag('Half Butterfly')).toBe(false) // owner ruling: half-guard variant
+  })
+
+  it('spot-checks the 2026-10 vocabulary harvest', () => {
+    expect(groupOfTag('Blast double')).toBe('standing')
+    expect(groupOfTag('K-guard')).toBe('guard')
+    expect(groupOfTag('Reverse De La Riva')).toBe('guard')
+    expect(groupOfTag('Headquarters')).toBe('passing')
+    expect(groupOfTag('North south choke')).toBe('side')
+    expect(groupOfTag('Gift wrap')).toBe('mount')
+    expect(groupOfTag('Body triangle')).toBe('back')
+    expect(groupOfTag('Inside heel hook')).toBe('legs')
+    expect(groupOfTag('Calf slicer')).toBe('legs')
+    expect(isOpenGuardTag('K-guard')).toBe(true)
+    expect(isOpenGuardTag('Berimbolo')).toBe(true)
+    expect(isOpenGuardTag('Z-guard')).toBe(false) // half-guard family — not open guard
+    expect(isOpenGuardTag('Rubber guard')).toBe(false) // closed-guard system
   })
 
   it('maps every default tag to a real group, never other', () => {

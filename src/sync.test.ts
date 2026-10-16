@@ -27,6 +27,9 @@ function mk(over: Partial<Session> = {}): Session {
     gi: true,
     rolls: 5,
     specific: 0,
+    specClosed: 0,
+    specMount: 0,
+    specOpen: 0,
     subsFor: 1,
     subsAgainst: 2,
     roundMin: 5,
@@ -125,6 +128,10 @@ describe('row mapping', () => {
   })
 
   it('round-trips specific rounds and clamps tampered values', () => {
+    const typed = mk({ specific: 3, specClosed: 1, specMount: 1, specOpen: 1 })
+    expect(fromRow(toRow(typed))).toEqual(typed)
+    const bad = fromRow({ ...toRow(mk()), spec_closed: 'lots', spec_mount: -2, spec_open: 1e9 })
+    expect([bad!.specClosed, bad!.specMount, bad!.specOpen]).toEqual([0, 0, 1000])
     expect(fromRow(toRow(mk({ specific: 3 })))!.specific).toBe(3)
     expect(fromRow({ ...toRow(mk()), specific: 'lots' })!.specific).toBe(0)
     expect(fromRow({ ...toRow(mk()), specific: -2 })!.specific).toBe(0)
@@ -249,6 +256,21 @@ describe('mergeSessions', () => {
   it('never deletes local sessions missing remotely', () => {
     const local = [mk({ id: 'a' }), mk({ id: 'b' })]
     expect(mergeSessions(local, [])).toHaveLength(2)
+  })
+
+  it('version skew: on a tie, a remote typed breakdown beats backfilled local zeros', () => {
+    // An old build dropped spec_* on pull; the new build backfilled zeros.
+    const zeroed = mk({ id: 'a', specific: 3, specClosed: 0, specMount: 0, specOpen: 0, updatedAt: 500 })
+    const typed = { ...zeroed, specClosed: 2, specMount: 1 }
+    expect(mergeSessions([zeroed], [typed])[0]).toEqual(typed)
+    // ...but never the reverse: real local values are not replaced by remote zeros
+    expect(mergeSessions([typed], [zeroed])[0]).toEqual(typed)
+    // ...and only when the totals agree (a different total is a different fact)
+    const otherTotal = { ...typed, specific: 4 }
+    expect(mergeSessions([zeroed], [otherTotal])[0]).toEqual(zeroed)
+    // a plain tie with identical rows still returns the same reference
+    const local = [typed]
+    expect(mergeSessions(local, [{ ...typed }])).toBe(local)
   })
 
   it('ignores remote rows with demo ids', () => {

@@ -48,6 +48,18 @@ export function load(): AppData {
           typeof s.specific === 'number' && Number.isInteger(s.specific) && s.specific >= 0 && s.specific <= 1000
             ? s.specific
             : 0,
+        specClosed:
+          typeof s.specClosed === 'number' && Number.isInteger(s.specClosed) && s.specClosed >= 0 && s.specClosed <= 1000
+            ? s.specClosed
+            : 0,
+        specMount:
+          typeof s.specMount === 'number' && Number.isInteger(s.specMount) && s.specMount >= 0 && s.specMount <= 1000
+            ? s.specMount
+            : 0,
+        specOpen:
+          typeof s.specOpen === 'number' && Number.isInteger(s.specOpen) && s.specOpen >= 0 && s.specOpen <= 1000
+            ? s.specOpen
+            : 0,
         durationMin:
           typeof s.durationMin === 'number' && Number.isInteger(s.durationMin) && s.durationMin >= 1 && s.durationMin <= 600
             ? s.durationMin
