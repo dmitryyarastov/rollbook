@@ -43,12 +43,16 @@ save real-looking test entries against the live backend.
 - Commit only when the owner asks. A push to `main` is a deploy — treat it
   as one.
 - Schema changes are SQL addendum sections appended to
-  `supabase-schema.sql`, hand-run by the owner in the Supabase SQL editor
-  (the app's key cannot run DDL). A new **column** on a pushed table must be
-  applied **before** deploying the build that pushes it (missing column =
-  400 = loud sync error); a new **table** is tolerated when missing (404 →
-  data stays local until it exists). Give the owner exact click-by-click
-  instructions and the SQL in a copyable block.
+  `supabase-schema.sql` (the app's key cannot run DDL). Sessions started in
+  `~/training-hub` apply them through the project-scoped Supabase MCP server
+  (`apply_migration`) after showing the owner the SQL — the full workflow,
+  including hand edits to live rows and what the server cannot do (restore a
+  paused project), is in [docs/operations.md](docs/operations.md). A new
+  **column** on a pushed table must be live **before** deploying the build
+  that pushes it (missing column = 400 = loud sync error); a new **table** is
+  tolerated when missing (404 → data stays local until it exists). Without the
+  MCP server, fall back to exact click-by-click dashboard instructions with the
+  SQL in a copyable block.
 
 ## Hard invariants (violating any of these is a bug)
 
