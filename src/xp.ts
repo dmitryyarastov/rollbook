@@ -217,6 +217,9 @@ export const CHARACTERISTICS: Characteristic[] = [
 ]
 
 const SESSION_CHAR_XP = 25
+
+/** Qualifying training sessions still needed to clear a characteristic's current level. */
+export const sessionsToNext = (c: LevelState): number => Math.ceil((c.need - c.into) / SESSION_CHAR_XP)
 const COMP_CHAR_XP = 60
 
 export interface CharacteristicState extends LevelState {

@@ -6,6 +6,7 @@ import {
   characterLevel,
   compXp,
   levelFromXp,
+  sessionsToNext,
   sessionXp,
   totalXp,
   yearXp,
@@ -215,6 +216,13 @@ describe('characteristics', () => {
     // a session qualifying via BOTH a tag and specific work still counts once
     const both = characteristics([mk(TODAY, { tags: ['Knee cut'], specOpen: 1 })], [])
     expect(byId(both, 'passing').xp).toBe(25)
+  })
+
+  it('sessionsToNext counts 25-XP sessions, rounding up', () => {
+    expect(sessionsToNext({ level: 6, into: 150, need: 175 })).toBe(1)
+    expect(sessionsToNext({ level: 7, into: 25, need: 200 })).toBe(7)
+    expect(sessionsToNext({ level: 1, into: 0, need: 50 })).toBe(2)
+    expect(sessionsToNext({ level: 2, into: 60, need: 75 })).toBe(1) // a comp's 60 can leave a remainder
   })
 
   it('competitions feed 60 and levels derive from xp', () => {

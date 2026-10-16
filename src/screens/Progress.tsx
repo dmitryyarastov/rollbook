@@ -12,7 +12,7 @@ import {
   yearTotals,
 } from '../stats'
 import type { AppData, Session } from '../types'
-import { characteristics, yearXp } from '../xp'
+import { characteristics, characterLevel, sessionsToNext, totalXp, yearXp } from '../xp'
 
 interface ProgressProps {
   data: AppData
@@ -25,7 +25,7 @@ export function Progress({ data, todayIso }: ProgressProps) {
   const vol = volume12w(data.sessions, todayIso)
   const maxVol = Math.max(...vol, 1)
   const year = yearTotals(data.sessions, todayIso)
-  const { flames, xp, chars } = useMemo(() => {
+  const { flames, xp, chars, totalXpAll, lvl } = useMemo(() => {
     const trains = (week: Session[]) => week.length >= goal
     const mixes = (week: Session[]) => week.some((s) => s.gi) && week.some((s) => !s.gi)
     const focuses = (week: Session[]) => data.focus.tag !== '' && week.some((s) => s.tags.includes(data.focus.tag))
@@ -49,6 +49,8 @@ export function Progress({ data, todayIso }: ProgressProps) {
       ],
       xp: yearXp(data.sessions, data.competitions, todayIso),
       chars: characteristics(data.sessions, data.competitions),
+      totalXpAll: totalXp(data.sessions, data.competitions),
+      lvl: characterLevel(totalXp(data.sessions, data.competitions)),
     }
   }, [data.sessions, data.competitions, data.focus.tag, goal, st.weeks, todayIso])
 
@@ -72,6 +74,42 @@ export function Progress({ data, todayIso }: ProgressProps) {
             : `Log ${goal}+ sessions a week to start a streak.`}
         </div>
       </section>
+
+      <div className="section-label label-row">Levels</div>
+      <div className="mrows">
+        <div className="card crow-char">
+          <div className="crow-char-head">
+            <span className="crow-char-label">Character</span>
+            <span className="crow-char-lv">LV {lvl.level}</span>
+          </div>
+          <div className="level-track">
+            <span className="level-fill" style={{ width: `${Math.round((100 * lvl.into) / lvl.need)}%` }} />
+          </div>
+          <div className="crow-char-xp">
+            {lvl.into} / {lvl.need} XP · {totalXpAll.toLocaleString('en-US')} total
+          </div>
+        </div>
+      </div>
+      <div className="levels-sublabel">Characteristics</div>
+      <div className="mrows">
+        {chars.map((c) => {
+          const n = sessionsToNext(c)
+          return (
+            <div key={c.id} className={`card crow-char${c.xp > 0 ? '' : ' crow-char--idle'}`}>
+              <div className="crow-char-head">
+                <span className="crow-char-label">{c.label}</span>
+                <span className="crow-char-lv">LV {c.level}</span>
+              </div>
+              <div className="level-track">
+                <span className="level-fill" style={{ width: `${Math.round((100 * c.into) / c.need)}%` }} />
+              </div>
+              <div className="crow-char-xp">
+                {c.into} / {c.need} XP · {n} {n === 1 ? 'session' : 'sessions'} to LV {c.level + 1}
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       <div className="section-label label-row">Sparring volume · 12 weeks</div>
       <section className="card vol-card">
@@ -159,24 +197,6 @@ export function Progress({ data, todayIso }: ProgressProps) {
           <span>Dec</span>
         </div>
       </section>
-
-      <div className="section-label label-row">Characteristics</div>
-      <div className="mrows">
-        {chars.map((c) => (
-          <div key={c.id} className={`card crow-char${c.xp > 0 ? '' : ' crow-char--idle'}`}>
-            <div className="crow-char-head">
-              <span className="crow-char-label">{c.label}</span>
-              <span className="crow-char-lv">LV {c.level}</span>
-            </div>
-            <div className="level-track">
-              <span className="level-fill" style={{ width: `${Math.round((100 * c.into) / c.need)}%` }} />
-            </div>
-            <div className="crow-char-xp">
-              {c.into} / {c.need} XP
-            </div>
-          </div>
-        ))}
-      </div>
 
       {data.settings.showMilestones && (
         <div>
