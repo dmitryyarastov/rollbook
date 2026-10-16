@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { currentRank } from '../belts'
+import { currentRank, rankLabel } from '../belts'
 import { BeltGlyph } from '../components/BeltGlyph'
 import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
@@ -51,8 +51,13 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
         </div>
       </header>
 
+      {rank && (
+        <div className="rank-row">
+          <BeltGlyph belt={rank.belt} stripes={rank.stripes} />
+          <span className="rank-label">{rankLabel(rank)}</span>
+        </div>
+      )}
       <div className="level-row">
-        {rank && <BeltGlyph belt={rank.belt} stripes={rank.stripes} />}
         <span className="level-chip">LV {lvl.level}</span>
         <span className="level-track">
           <span className="level-fill" style={{ width: `${Math.round((100 * lvl.into) / lvl.need)}%` }} />
@@ -104,7 +109,7 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
           <div className="kicker">Streak</div>
           <div className="stat-line">
             <span className="stat-n">{st.weeks}</span>
-            <span className="stat-u">weeks</span>
+            <span className="stat-u">{st.weeks === 1 ? 'week' : 'weeks'}</span>
           </div>
           <div className="stat-note">training {goal}+ / week</div>
         </section>

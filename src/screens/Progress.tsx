@@ -67,7 +67,7 @@ export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
           <div className="ring-pulse" />
           <div className="ring">
             <div className="ring-n">{st.weeks}</div>
-            <div className="ring-l">WEEKS</div>
+            <div className="ring-l">{st.weeks === 1 ? 'WEEK' : 'WEEKS'}</div>
           </div>
         </div>
         <div className="streak-title">Current streak</div>
