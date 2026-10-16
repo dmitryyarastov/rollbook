@@ -117,6 +117,9 @@ const TAG_GROUP: Record<string, CurriculumGroupId> = {
   'single leg x': 'guard',
   'top lock': 'guard', // a closed-guard variant despite the name — NOT top control (owner ruling)
   'side scissors': 'guard', // closed-guard improved position (owner ruling)
+  '2on1 from closed guard': 'guard', // the closed-guard arm drag — distinct from standing 'arm drag' (owner ruling)
+  '2 on 1 from closed guard': 'guard',
+  '2-on-1 from closed guard': 'guard',
   'pendulum': 'guard',
   'kimura': 'guard',
   'armbar': 'guard',

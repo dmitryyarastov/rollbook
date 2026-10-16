@@ -51,6 +51,7 @@ The owner classified his own newer tags; these override any plausible-looking al
 - **`Double under pass`, `Long step pass` → `passing`** (aliases of `double under` / `long step`).
 - **`Slide by` → `standing`** — a no-gi standing technique (the gi split routes it to the Wrestling · No-Gi characteristic on no-gi sessions).
 - **`Turtle defense` → `back`** — bottom-side turtle work; back & turtle theme, deliberately not top control.
+- **`2on1 from closed guard` → `guard`** (2026-10-16) — the owner's name for the arm drag (two-on-one) hit from closed guard, usually into a back take. It is deliberately a separate tag from `Arm drag`, which stays `standing` for arm drags on the feet (no-gi, alongside `Slide by`). As a guard-bottom attack it feeds no characteristic; it is not an open guard.
 
 ## The 2026-10 vocabulary harvest
 

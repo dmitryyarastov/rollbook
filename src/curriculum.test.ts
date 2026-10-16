@@ -98,6 +98,9 @@ describe('groupOfTag judgment calls (documented deviations)', () => {
     expect(groupOfTag('Turtle defense')).toBe('back')
     expect(isOpenGuardTag('SLX')).toBe(true) // open guard — counts for the comp milestone
     expect(isOpenGuardTag('Top lock')).toBe(false) // closed guard — does not
+    expect(groupOfTag('2on1 from closed guard')).toBe('guard') // closed-guard arm drag
+    expect(groupOfTag('Arm drag')).toBe('standing') // the standing arm drag stays separate
+    expect(isOpenGuardTag('2on1 from closed guard')).toBe(false)
   })
 
   it('maps every tag in the live synced data (2026-10-16 audit)', () => {
