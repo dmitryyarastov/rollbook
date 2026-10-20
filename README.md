@@ -113,15 +113,15 @@ parameterized by a local-date `todayIso` and covered by tests:
   character level on Home runs on linearly growing level costs
   (100, 150, 200, …); the Experience section on Progress shows XP today /
   this year / best day / average per day plus a year sparkline.
-- **Characteristics** are nine lifelong attributes — passing, guard
-  retention, takedowns (gi), wrestling (no-gi), leg locks, top control,
-  side control, back control, turtle —
+- **Characteristics** are six lifelong attributes — passing, guard
+  retention, takedowns (gi), wrestling (no-gi), leg locks, top control /
+  pinning —
   that level up (on a faster 50/25 curve) from a flat 25 XP per session or
   60 per competition whose tags touch them. Typed specific rounds count
   too: the 2+2 swap formats work both sides, so guard-format rounds
-  (closed or open) feed both passing and guard retention, mount rounds feed
-  top control, and side control, back control and turtle rounds feed their
-  own control plus top control (the escaping side earns nothing). Flat per entry, so tagging one session ten ways
+  (closed or open) feed both passing and guard retention, and mount, side
+  control, back control and turtle rounds feed top control / pinning (the
+  escaping side earns nothing). Flat per entry, so tagging one session ten ways
   doesn't grind — and a session qualifying via both a tag and specific work
   still counts once; the standing group splits by the session's gi flag, and
   escapes deliberately don't count as top control. The set is fixed by
@@ -206,7 +206,7 @@ styled in-system:
   untyped specific total.
 - **XP, levels & characteristics** (October 2026): a character-level row on
   Home and an Experience section on Progress (XP stat tiles + a year
-  sparkline), plus nine lifelong characteristics as level cards — all pure
+  sparkline), plus six lifelong characteristics as level cards — all pure
   derivations from the logged history, styled in-system (thin accent
   progress lines, no big fills). See "How the numbers are computed" below.
 - **Belt rank** (October 2026): a belt card at the top of Progress → Levels
@@ -227,7 +227,7 @@ src/
   types.ts       Session / Competition / Promotion / AppData / form models
   dates.ts       local-date + Monday-week helpers, formatting, auto-titles
   stats.ts       every derived stat + the history feed (tested in stats.test.ts)
-  xp.ts          XP formulas, levels, nine lifelong characteristics (xp.test.ts)
+  xp.ts          XP formulas, levels, six lifelong characteristics (xp.test.ts)
   belts.ts       belt ladder + current rank from promotion events (belts.test.ts)
   specific.ts    the six 2+2 swap-round formats, one list (specific.test.ts)
   curriculum.ts  Gracie Barra position groups + tag ordering

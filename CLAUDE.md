@@ -131,14 +131,14 @@ the live backend.
   master data. The GB curriculum mapping has three documented judgment calls
   (Escapes→side control, Half guard→guard, Darce→back & turtle) pinned by
   tests — don't "fix" them casually.
-- The nine characteristics in `src/xp.ts` (passing, guard retention,
-  takedowns-gi, wrestling-nogi, leg locks, top control, side control, back
-  control, turtle) are the owner's chosen **lifelong attribute set** — the
+- The six characteristics in `src/xp.ts` (passing, guard retention,
+  takedowns-gi, wrestling-nogi, leg locks, top control — labelled "Top
+  control / Pinning") are the owner's chosen **lifelong attribute set** — the
   SET changes only by his call (an RPG character sheet he upgrades across his
-  whole BJJ journey, deliberately his standing motivation; he added the three
-  positional controls on 2026-10-20 — each credits its own swap format and
-  top-side tags, and the same work also credits top control). Tag matchers
-  may grow freely. XP/levels store
+  whole BJJ journey, deliberately his standing motivation). Separate side
+  control / back control / turtle attributes were tried and rolled back on
+  2026-10-20 at his request: all pinning work, tags and swap rounds alike,
+  stays one attribute. Tag matchers may grow freely. XP/levels store
   nothing — pure derivations from logged history — and the formulas are
   pinned by `xp.test.ts`; changing one silently recomputes every level
   across all history, so change deliberately, never casually (see
