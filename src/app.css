@@ -513,7 +513,11 @@
 }
 .srow-stats {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap; /* up to six format stats + subs + round length: wrap whole stats, never overflow the card */
+  gap: 12px 20px;
+}
+.srow-stat {
+  white-space: nowrap;
 }
 .srow-stat-n {
   font-weight: 500;

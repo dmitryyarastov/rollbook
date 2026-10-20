@@ -33,6 +33,10 @@ export function emptyData(): AppData {
   }
 }
 
+/** A typed-round count from a stored blob: an integer 0–1000, else 0 (pre-format rows, junk). */
+const roundCount = (v: unknown): number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 1000 ? v : 0
+
 /** Exported for tests; the app itself only reaches it through useAppData. */
 export function load(): AppData {
   const base = emptyData()
@@ -50,18 +54,12 @@ export function load(): AppData {
           typeof s.specific === 'number' && Number.isInteger(s.specific) && s.specific >= 0 && s.specific <= 1000
             ? s.specific
             : 0,
-        specClosed:
-          typeof s.specClosed === 'number' && Number.isInteger(s.specClosed) && s.specClosed >= 0 && s.specClosed <= 1000
-            ? s.specClosed
-            : 0,
-        specMount:
-          typeof s.specMount === 'number' && Number.isInteger(s.specMount) && s.specMount >= 0 && s.specMount <= 1000
-            ? s.specMount
-            : 0,
-        specOpen:
-          typeof s.specOpen === 'number' && Number.isInteger(s.specOpen) && s.specOpen >= 0 && s.specOpen <= 1000
-            ? s.specOpen
-            : 0,
+        specClosed: roundCount(s.specClosed),
+        specMount: roundCount(s.specMount),
+        specOpen: roundCount(s.specOpen),
+        specSide: roundCount(s.specSide),
+        specBack: roundCount(s.specBack),
+        specTurtle: roundCount(s.specTurtle),
         durationMin:
           typeof s.durationMin === 'number' && Number.isInteger(s.durationMin) && s.durationMin >= 1 && s.durationMin <= 600
             ? s.durationMin

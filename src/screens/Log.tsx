@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { autoTitle, fmtTime, resolveWhen, toIso } from '../dates'
 import { Chip } from '../components/Chip'
 import { Stepper } from '../components/Stepper'
+import { SPEC_FORMATS } from '../specific'
 import type { CardioRating, CompForm, CompMatch, CompOutcome, LogForm, LogMode, Placement, RoundMin, SessionIntensity } from '../types'
 
 const DUR_OPTIONS: RoundMin[] = [4, 5, 6, 8]
@@ -130,13 +131,7 @@ export function Log({
           </div>
           <div className="spec-label">SPECIFIC · 2+2 MIN SWAP ROUNDS</div>
           <div className="spec-grid">
-            {(
-              [
-                { key: 'specClosed', label: 'Closed guard' },
-                { key: 'specMount', label: 'Mount' },
-                { key: 'specOpen', label: 'Open guard' },
-              ] as const
-            ).map(({ key, label }) => (
+            {SPEC_FORMATS.map(({ key, label }) => (
               <div key={key} className="spec-row">
                 <div className="spec-row-label">{label}</div>
                 <div className="spec-stepper">

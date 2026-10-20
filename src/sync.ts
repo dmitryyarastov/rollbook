@@ -11,6 +11,7 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
 import { emptyData } from './store'
 import { isValidRank } from './belts'
+import { specBreakdownSum } from './specific'
 import type {
   AppData,
   Belt,
@@ -59,6 +60,9 @@ interface SessionRow {
   spec_closed: number
   spec_mount: number
   spec_open: number
+  spec_side: number
+  spec_back: number
+  spec_turtle: number
   subs_for: number
   subs_against: number
   round_min: number
@@ -82,6 +86,9 @@ export function toRow(s: Session): SessionRow {
     spec_closed: s.specClosed,
     spec_mount: s.specMount,
     spec_open: s.specOpen,
+    spec_side: s.specSide,
+    spec_back: s.specBack,
+    spec_turtle: s.specTurtle,
     subs_for: s.subsFor,
     subs_against: s.subsAgainst,
     round_min: s.roundMin,
@@ -129,6 +136,9 @@ export function fromRow(r: unknown): Session | null {
     specClosed: Math.min(1000, count(o.spec_closed)),
     specMount: Math.min(1000, count(o.spec_mount)),
     specOpen: Math.min(1000, count(o.spec_open)),
+    specSide: Math.min(1000, count(o.spec_side)),
+    specBack: Math.min(1000, count(o.spec_back)),
+    specTurtle: Math.min(1000, count(o.spec_turtle)),
     subsFor: count(o.subs_for),
     subsAgainst: count(o.subs_against),
     roundMin,
@@ -341,17 +351,18 @@ function mergeById<T extends Mergeable>(
 }
 
 /**
- * Version-skew repair for the typed specific breakdown. An older build drops
- * spec_* on pull; after it updates, load() backfills zeros — the same row at
- * the same updatedAt, minus the breakdown. Left to "ties keep local", that
- * device would push its zeros over the real values forever. On a tie, a
- * non-zero remote breakdown with the same total therefore beats an all-zero
- * local one, so backfilled zeros can never become authoritative.
+ * Version-skew repair for the typed specific breakdown. A build that predates
+ * a spec_* column drops it on pull; after that device updates, load()
+ * backfills zero — the same row at the same updatedAt, minus part of the
+ * breakdown (all of it for pre-format builds; only the newer formats for a
+ * build that knew some). Left to "ties keep local", that device would push
+ * its zeros over the real values forever. So on a tie, the copy carrying MORE
+ * typed rounds wins, provided both agree on the total and the richer copy
+ * stays within it (app-written rows keep breakdown === specific). One-way by
+ * construction: real local values are never replaced by poorer remote ones.
  */
 const recoversBreakdown = (l: Session, r: Session): boolean =>
-  l.specClosed + l.specMount + l.specOpen === 0 &&
-  r.specClosed + r.specMount + r.specOpen > 0 &&
-  r.specific === l.specific
+  r.specific === l.specific && specBreakdownSum(r) > specBreakdownSum(l) && specBreakdownSum(r) <= r.specific
 
 export const mergeSessions = (local: Session[], remote: Session[]): Session[] =>
   mergeById(local, remote, recoversBreakdown)

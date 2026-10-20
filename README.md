@@ -11,8 +11,9 @@ competition entries record matches (outcome, points, submission), one
 cardio rating for the event, a podium placement, the techniques worked,
 and what worked / what didn't. Training entries record free-sparring rounds
 and positional ("specific") rounds typed by the gym's 2+2-minute swap
-formats — closed guard, mount, open guard — plus round length and
-whole-session duration with 1–5 RPE for downstream training-load analysis.
+formats — closed guard, open guard, side control, mount, back control,
+turtle — plus round length and whole-session duration with 1–5 RPE for
+downstream training-load analysis.
 The character also carries a belt rank: Progress shows the current belt and
 stripes with a one-tap Promote button for the next stripe or belt, and a
 pencil to set any rank on any past date.
@@ -27,7 +28,7 @@ with [CLAUDE.md](CLAUDE.md) as the entry point and invariants digest.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # vitest — dates/stats/xp/belts/curriculum/store/sync/demo suites
+npm test           # vitest — dates/stats/xp/belts/specific/curriculum/store/sync/demo suites
 npm run build      # typecheck + production build + SW precache injection
 npm run preview    # serve the production build
 npm run icons      # regenerate public/icons PNGs from the SVG mark (sharp)
@@ -64,10 +65,13 @@ never blocks the UI, and a paused/unreachable project just shows a quiet
   **required** for builds with the When picker, the "Competition placement
   + technique tags" ALTER for builds with the goals feature, the "Whole-session
   duration + RPE" ALTER for builds deployed from September 2026, the
-  "Specific (positional) rounds" ALTER for builds from October 2026, and the
+  "Specific (positional) rounds" ALTER for builds from October 2026, the
   "Specific-training formats" ALTER (spec_closed / spec_mount / spec_open)
-  for builds from mid-October 2026: until the applicable section runs,
-  pushes to that table 400 and sync shows an error (data stays safe locally).
+  for builds from mid-October 2026, and the "More specific-training formats"
+  ALTER (spec_side / spec_back / spec_turtle) for builds with the side
+  control / back control / turtle steppers: until the applicable section
+  runs, pushes to that table 400 and sync shows an error (data stays safe
+  locally).
   A missing competitions or promotions table is merely tolerated (comps and
   belt rank events stay local until it exists — so the "Belt promotions"
   section may run before or after deploying) — the tolerance covers the whole
@@ -109,15 +113,17 @@ parameterized by a local-date `todayIso` and covered by tests:
   character level on Home runs on linearly growing level costs
   (100, 150, 200, …); the Experience section on Progress shows XP today /
   this year / best day / average per day plus a year sparkline.
-- **Characteristics** are six fixed lifelong attributes — passing, guard
-  retention, takedowns (gi), wrestling (no-gi), leg locks, top control —
+- **Characteristics** are nine lifelong attributes — passing, guard
+  retention, takedowns (gi), wrestling (no-gi), leg locks, top control,
+  side control, back control, turtle —
   that level up (on a faster 50/25 curve) from a flat 25 XP per session or
   60 per competition whose tags touch them. Typed specific rounds count
   too: the 2+2 swap formats work both sides, so guard-format rounds
-  (closed or open) feed both passing and guard retention, and mount rounds
-  feed top control. Flat per entry, so tagging one session ten ways doesn't
-  grind — and a session qualifying via both a tag and specific work still
-  counts once; the standing group splits by the session's gi flag, and
+  (closed or open) feed both passing and guard retention, mount rounds feed
+  top control, and side control, back control and turtle rounds feed their
+  own control plus top control (the escaping side earns nothing). Flat per entry, so tagging one session ten ways
+  doesn't grind — and a session qualifying via both a tag and specific work
+  still counts once; the standing group splits by the session's gi flag, and
   escapes deliberately don't count as top control. The set is fixed by
   design; only the matching may grow.
 - **Belt rank** (`src/belts.ts`) is the exception to "nothing stored": a
@@ -191,14 +197,16 @@ styled in-system:
   previous class's per-session facts cannot silently carry forward.
 - **Specific rounds** (October 2026): compact steppers in the Rounds card
   log positional-sparring rounds beside free rolls — one labeled row per
-  format of the gym's 2+2-minute swap rounds (closed guard, mount, open
-  guard; each side plays both roles); every round stat counts the specific
-  total together with free rolls. The prototype's Submissions card was
-  retired at the same time — old sessions keep and display their historical
-  sub tallies, and pre-format sessions show an untyped specific total.
+  format of the gym's 2+2-minute swap rounds (closed guard, open guard,
+  side control, mount, back control, turtle; each side plays both roles),
+  all rendered from the one list in `src/specific.ts`; every round stat
+  counts the specific total together with free rolls. The prototype's
+  Submissions card was retired at the same time — old sessions keep and
+  display their historical sub tallies, and pre-format sessions show an
+  untyped specific total.
 - **XP, levels & characteristics** (October 2026): a character-level row on
   Home and an Experience section on Progress (XP stat tiles + a year
-  sparkline), plus six lifelong characteristics as level cards — all pure
+  sparkline), plus nine lifelong characteristics as level cards — all pure
   derivations from the logged history, styled in-system (thin accent
   progress lines, no big fills). See "How the numbers are computed" below.
 - **Belt rank** (October 2026): a belt card at the top of Progress → Levels
@@ -219,8 +227,9 @@ src/
   types.ts       Session / Competition / Promotion / AppData / form models
   dates.ts       local-date + Monday-week helpers, formatting, auto-titles
   stats.ts       every derived stat + the history feed (tested in stats.test.ts)
-  xp.ts          XP formulas, levels, six lifelong characteristics (xp.test.ts)
+  xp.ts          XP formulas, levels, nine lifelong characteristics (xp.test.ts)
   belts.ts       belt ladder + current rank from promotion events (belts.test.ts)
+  specific.ts    the six 2+2 swap-round formats, one list (specific.test.ts)
   curriculum.ts  Gracie Barra position groups + tag ordering
   store.ts       localStorage persistence (rollbook:v1) + defaults
   sync.ts        Supabase PostgREST mapping/merge + IO (useSync.ts schedules)

@@ -1,4 +1,5 @@
 import { fmtShort, fmtTime, weekdayBadge } from '../dates'
+import { SPEC_FORMATS, specBreakdownSum } from '../specific'
 import { sessionRounds } from '../stats'
 import type { Session } from '../types'
 
@@ -35,25 +36,13 @@ export function SessionRow({ session: s, expanded = false, onClick }: SessionRow
         <span className="srow-panel">
           <span className="srow-stats">
             {/* Typed specific rounds when the breakdown exists; legacy total otherwise. */}
-            {s.specClosed > 0 && (
-              <span className="srow-stat">
-                <span className="srow-stat-n">{s.specClosed}</span>
-                <span className="micro">CLOSED GD</span>
+            {SPEC_FORMATS.filter((f) => s[f.key] > 0).map((f) => (
+              <span key={f.key} className="srow-stat">
+                <span className="srow-stat-n">{s[f.key]}</span>
+                <span className="micro">{f.short}</span>
               </span>
-            )}
-            {s.specMount > 0 && (
-              <span className="srow-stat">
-                <span className="srow-stat-n">{s.specMount}</span>
-                <span className="micro">MOUNT</span>
-              </span>
-            )}
-            {s.specOpen > 0 && (
-              <span className="srow-stat">
-                <span className="srow-stat-n">{s.specOpen}</span>
-                <span className="micro">OPEN GD</span>
-              </span>
-            )}
-            {s.specific > 0 && s.specClosed + s.specMount + s.specOpen === 0 && (
+            ))}
+            {s.specific > 0 && specBreakdownSum(s) === 0 && (
               <span className="srow-stat">
                 <span className="srow-stat-n">{s.specific}</span>
                 <span className="micro">SPECIFIC</span>

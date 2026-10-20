@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Competition, Session } from './types'
 import {
+  BACK_CONTROL_TAGS,
   CHARACTERISTICS,
+  SIDE_CONTROL_TAGS,
+  TURTLE_TAGS,
   characteristics,
   characterLevel,
   compXp,
@@ -27,6 +30,9 @@ function mk(date: string, extra: Partial<Session> = {}): Session {
     specClosed: 0,
     specMount: 0,
     specOpen: 0,
+    specSide: 0,
+    specBack: 0,
+    specTurtle: 0,
     subsFor: 0,
     subsAgainst: 0,
     roundMin: 5,
@@ -128,7 +134,7 @@ describe('yearXp', () => {
 describe('characteristics', () => {
   const byId = (states: ReturnType<typeof characteristics>, id: string) => states.find((s) => s.id === id)!
 
-  it('defines the six lifelong attributes in order', () => {
+  it('defines the nine lifelong attributes in order', () => {
     expect(CHARACTERISTICS.map((c) => c.id)).toEqual([
       'passing',
       'retention',
@@ -136,7 +142,46 @@ describe('characteristics', () => {
       'wrestling-nogi',
       'leglocks',
       'top-control',
+      'side-control',
+      'back-control',
+      'turtle',
     ])
+  })
+
+  it('each positional swap format credits its own control AND top control', () => {
+    const cases = [
+      ['specSide', 'side-control'],
+      ['specBack', 'back-control'],
+      ['specTurtle', 'turtle'],
+    ] as const
+    for (const [fmt, id] of cases) {
+      const states = characteristics([mk(TODAY, { [fmt]: 1, specific: 1 })], [])
+      expect(byId(states, id).xp, fmt).toBe(25)
+      expect(byId(states, 'top-control').xp, fmt).toBe(25)
+      for (const other of cases.filter(([, o]) => o !== id)) expect(byId(states, other[1]).xp, `${fmt} vs ${other[1]}`).toBe(0)
+    }
+    // mount stays top control only (no Mount characteristic)
+    const mount = characteristics([mk(TODAY, { specMount: 1, specific: 1 })], [])
+    expect(byId(mount, 'top-control').xp).toBe(25)
+    expect(['side-control', 'back-control', 'turtle'].map((id) => byId(mount, id).xp)).toEqual([0, 0, 0])
+  })
+
+  it('top-side tags credit their positional control and top control; bottom work credits neither', () => {
+    const tagged = (tag: string) => characteristics([mk(TODAY, { tags: [tag] })], [])
+    expect(byId(tagged('Side Control'), 'side-control').xp).toBe(25)
+    expect(byId(tagged('Back takes'), 'back-control').xp).toBe(25)
+    expect(byId(tagged('Cow catcher'), 'turtle').xp).toBe(25)
+    expect(byId(tagged('Darce'), 'turtle').xp).toBe(25)
+    for (const bottom of ['Turtle defense', 'Escapes', 'Buggy choke']) {
+      const s = tagged(bottom)
+      expect(['side-control', 'back-control', 'turtle', 'top-control'].map((id) => byId(s, id).xp), bottom).toEqual([0, 0, 0, 0])
+    }
+  })
+
+  it('every positional-control tag also feeds top control (the sets never drift apart)', () => {
+    for (const set of [SIDE_CONTROL_TAGS, BACK_CONTROL_TAGS, TURTLE_TAGS]) {
+      for (const tag of set) expect(byId(characteristics([mk(TODAY, { tags: [tag] })], []), 'top-control').xp, tag).toBe(25)
+    }
   })
 
   it('a session feeds every attribute its tags touch, flat 25 each', () => {
@@ -223,6 +268,18 @@ describe('characteristics', () => {
     expect(sessionsToNext({ level: 7, into: 25, need: 200 })).toBe(7)
     expect(sessionsToNext({ level: 1, into: 0, need: 50 })).toBe(2)
     expect(sessionsToNext({ level: 2, into: 60, need: 75 })).toBe(1) // a comp's 60 can leave a remainder
+  })
+
+  it('side control, back control and turtle rounds credit top control, nothing else', () => {
+    for (const fmt of ['specSide', 'specBack', 'specTurtle'] as const) {
+      const states = characteristics([mk(TODAY, { [fmt]: 1, specific: 1 })], [])
+      expect(byId(states, 'top-control').xp, fmt).toBe(25)
+      expect(byId(states, 'passing').xp, fmt).toBe(0)
+      expect(byId(states, 'retention').xp, fmt).toBe(0)
+    }
+    // several pin formats in one session still count once
+    const many = characteristics([mk(TODAY, { specMount: 1, specSide: 1, specBack: 1, specific: 3 })], [])
+    expect(byId(many, 'top-control').xp).toBe(25)
   })
 
   it('competitions feed 60 and levels derive from xp', () => {

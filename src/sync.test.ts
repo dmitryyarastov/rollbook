@@ -33,6 +33,9 @@ function mk(over: Partial<Session> = {}): Session {
     specClosed: 0,
     specMount: 0,
     specOpen: 0,
+    specSide: 0,
+    specBack: 0,
+    specTurtle: 0,
     subsFor: 1,
     subsAgainst: 2,
     roundMin: 5,
@@ -144,10 +147,12 @@ describe('row mapping', () => {
   })
 
   it('round-trips specific rounds and clamps tampered values', () => {
-    const typed = mk({ specific: 3, specClosed: 1, specMount: 1, specOpen: 1 })
+    const typed = mk({ specific: 6, specClosed: 1, specMount: 1, specOpen: 1, specSide: 1, specBack: 1, specTurtle: 1 })
     expect(fromRow(toRow(typed))).toEqual(typed)
     const bad = fromRow({ ...toRow(mk()), spec_closed: 'lots', spec_mount: -2, spec_open: 1e9 })
     expect([bad!.specClosed, bad!.specMount, bad!.specOpen]).toEqual([0, 0, 1000])
+    const bad2 = fromRow({ ...toRow(mk()), spec_side: 'x', spec_back: -1, spec_turtle: 1e9 })
+    expect([bad2!.specSide, bad2!.specBack, bad2!.specTurtle]).toEqual([0, 0, 1000])
     expect(fromRow(toRow(mk({ specific: 3 })))!.specific).toBe(3)
     expect(fromRow({ ...toRow(mk()), specific: 'lots' })!.specific).toBe(0)
     expect(fromRow({ ...toRow(mk()), specific: -2 })!.specific).toBe(0)
@@ -314,6 +319,20 @@ describe('mergeSessions', () => {
     // a plain tie with identical rows still returns the same reference
     const local = [typed]
     expect(mergeSessions(local, [{ ...typed }])).toBe(local)
+  })
+
+  it('version skew, partial: a build that knew only some formats dropped the newer ones', () => {
+    // Real row: closed 1 + side 2 = 3. A pre-side build kept closed, dropped side; after updating, side backfilled to 0.
+    const partial = mk({ id: 'a', specific: 3, specClosed: 1, specSide: 0, updatedAt: 500 })
+    const full = { ...partial, specSide: 2 }
+    expect(mergeSessions([partial], [full])[0]).toEqual(full)
+    expect(mergeSessions([full], [partial])[0]).toEqual(full) // never the reverse
+  })
+
+  it('version skew: a remote breakdown exceeding its own total is not adopted', () => {
+    const local = mk({ id: 'a', specific: 2, specClosed: 0, updatedAt: 500 })
+    const tampered = { ...local, specClosed: 5 } // breakdown 5 > specific 2
+    expect(mergeSessions([local], [tampered])[0]).toEqual(local)
   })
 
   it('ignores remote rows with demo ids', () => {

@@ -168,6 +168,60 @@ const TOP_CONTROL_TAGS = new Set([
   'turtle top',
 ])
 
+/** Holding side control from top: the pin, its transitions and its finishes. */
+export const SIDE_CONTROL_TAGS: ReadonlySet<string> = new Set([
+  'side control',
+  'north south',
+  'north-south',
+  'kesa gatame',
+  'scarf hold',
+  'scarf hold control',
+  'reverse kesa gatame',
+  'reverse kesa',
+  'reverse scarf hold',
+  'americana',
+  'paper cutter',
+  'bread cutter',
+  'bread cutter choke',
+  'north south choke',
+  'north-south choke',
+  'crossface',
+])
+
+/** Taking and holding the back, and its finishes. */
+export const BACK_CONTROL_TAGS: ReadonlySet<string> = new Set([
+  'back takes',
+  'back control',
+  'back attacks',
+  'rear mount',
+  'back mount',
+  'seatbelt',
+  'body triangle',
+  'rnc',
+  'rear naked choke',
+  'bow and arrow',
+  'rear triangle',
+  'back triangle',
+  'straight jacket',
+  'straitjacket',
+  'straight jacket system',
+])
+
+/** Attacking the turtle from top — front-headlock family included. Turtle defense (bottom) is not. */
+export const TURTLE_TAGS: ReadonlySet<string> = new Set([
+  'turtle attacks',
+  'turtle top',
+  'front headlock',
+  'cow catcher',
+  'darce',
+  "d'arce",
+  'anaconda',
+  'peruvian necktie',
+  'japanese necktie',
+  'clock choke',
+  'crucifix',
+])
+
 const RETENTION_TAGS = new Set(['guard retention', 'retention', 'guard recovery', 'granby roll', 'granby'])
 
 const norm = (tag: string) => tag.trim().toLowerCase()
@@ -179,18 +233,23 @@ export interface Characteristic {
   matches: (tag: string, gi: boolean) => boolean
   /**
    * Does the session's typed specific work feed it? Each 2+2 swap round
-   * works both sides: guard formats train passing AND retention; the mount
-   * format trains top control (the escape side has no attribute).
+   * works both sides: guard formats train passing AND retention; the pin,
+   * back and turtle formats (mount, side control, back control, turtle) train
+   * top control — the escaping side has no attribute.
    */
   matchesSpecific?: (s: Session) => boolean
 }
 
 /**
- * The fixed, lifelong attribute set — chosen by Dmitrii as the axes he wants
- * to upgrade across his whole BJJ journey. The SET is stable by design (an
- * RPG character sheet, not a tag cloud); only its tag matchers may grow.
+ * The lifelong attribute set — chosen by Dmitrii as the axes he wants to
+ * upgrade across his whole BJJ journey. The SET changes only by his call (an
+ * RPG character sheet, not a tag cloud): six originally, then Side control,
+ * Back control and Turtle on 2026-10-20 alongside their swap-round formats.
+ * Tag matchers may grow freely.
  */
 const guardSpecific = (s: Session) => s.specClosed > 0 || s.specOpen > 0
+/** Holding a pin, the back or the turtle from top — the escaping side has no attribute. */
+const topSpecific = (s: Session) => s.specMount > 0 || s.specSide > 0 || s.specBack > 0 || s.specTurtle > 0
 
 export const CHARACTERISTICS: Characteristic[] = [
   {
@@ -212,7 +271,27 @@ export const CHARACTERISTICS: Characteristic[] = [
     id: 'top-control',
     label: 'Top control',
     matches: (t) => TOP_CONTROL_TAGS.has(norm(t)),
-    matchesSpecific: (s) => s.specMount > 0,
+    matchesSpecific: topSpecific,
+  },
+  // Positional controls (2026-10-20): each credits its own swap format and
+  // top-side tags; the same work also credits Top control above.
+  {
+    id: 'side-control',
+    label: 'Side control',
+    matches: (t) => SIDE_CONTROL_TAGS.has(norm(t)),
+    matchesSpecific: (s) => s.specSide > 0,
+  },
+  {
+    id: 'back-control',
+    label: 'Back control',
+    matches: (t) => BACK_CONTROL_TAGS.has(norm(t)),
+    matchesSpecific: (s) => s.specBack > 0,
+  },
+  {
+    id: 'turtle',
+    label: 'Turtle',
+    matches: (t) => TURTLE_TAGS.has(norm(t)),
+    matchesSpecific: (s) => s.specTurtle > 0,
   },
 ]
 

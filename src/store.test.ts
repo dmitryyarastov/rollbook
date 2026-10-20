@@ -90,7 +90,7 @@ describe('load', () => {
   it('backfills the typed specific breakdown to zeros on older blobs', () => {
     stubStorage(JSON.stringify({ sessions: [{ ...session, specific: 2 }] }))
     const s = load().sessions[0]
-    expect([s.specClosed, s.specMount, s.specOpen]).toEqual([0, 0, 0])
+    expect([s.specClosed, s.specMount, s.specOpen, s.specSide, s.specBack, s.specTurtle]).toEqual([0, 0, 0, 0, 0, 0])
     expect(s.specific).toBe(2)
     stubStorage(JSON.stringify({ sessions: [{ ...session, specMount: 'junk', specOpen: 2 }] }))
     expect([load().sessions[0].specMount, load().sessions[0].specOpen]).toEqual([0, 2])

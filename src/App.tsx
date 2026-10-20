@@ -10,6 +10,7 @@ import { Techniques } from './screens/Techniques'
 import { orderTagsByCurriculum } from './curriculum'
 import { withSessionTags } from './stats'
 import { emptyData, uid, useAppData } from './store'
+import { specBreakdownSum } from './specific'
 import { useSync } from './useSync'
 import { isPromotionDate, isValidRank } from './belts'
 import type { Rank } from './belts'
@@ -35,6 +36,9 @@ const EMPTY_FORM: LogForm = {
   specClosed: 0,
   specMount: 0,
   specOpen: 0,
+  specSide: 0,
+  specBack: 0,
+  specTurtle: 0,
   roundMin: 5,
   durationMin: 60,
   intensity: 3,
@@ -117,10 +121,13 @@ export default function App() {
       gi: form.gi,
       rolls: form.rolls,
       // Stored total stays in lockstep with the typed breakdown.
-      specific: form.specClosed + form.specMount + form.specOpen,
+      specific: specBreakdownSum(form),
       specClosed: form.specClosed,
       specMount: form.specMount,
       specOpen: form.specOpen,
+      specSide: form.specSide,
+      specBack: form.specBack,
+      specTurtle: form.specTurtle,
       // Submission counting retired from the UI; historical rows keep theirs.
       subsFor: 0,
       subsAgainst: 0,
@@ -140,6 +147,9 @@ export default function App() {
       specClosed: 0,
       specMount: 0,
       specOpen: 0,
+      specSide: 0,
+      specBack: 0,
+      specTurtle: 0,
       durationMin: EMPTY_FORM.durationMin,
       intensity: EMPTY_FORM.intensity,
       tags: [],

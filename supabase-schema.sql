@@ -189,3 +189,16 @@ create policy promotions_insert on public.promotions for insert to anon with che
 create policy promotions_update on public.promotions for update to anon using (true) with check (user_id = 'dmitrii');
 
 revoke delete on public.promotions from anon;
+
+-- ── More specific-training formats (added 2026-10) ───────────────────────────
+-- Side control, back control and turtle join the 2+2-minute swap formats.
+-- App-written rows keep specific = the sum of every spec_* column (see
+-- src/specific.ts). Idempotent; apply BEFORE deploying the build that pushes
+-- these columns (session pushes are strict — a missing column is a 400).
+
+alter table public.sessions add column if not exists spec_side integer not null default 0
+  check (spec_side between 0 and 1000);
+alter table public.sessions add column if not exists spec_back integer not null default 0
+  check (spec_back between 0 and 1000);
+alter table public.sessions add column if not exists spec_turtle integer not null default 0
+  check (spec_turtle between 0 and 1000);

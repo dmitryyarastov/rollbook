@@ -17,12 +17,16 @@ export interface Session {
   specific: number
   /**
    * Per-format breakdown of `specific` — the gym's 2+2-minute swap rounds
-   * (each side plays both roles). Zero on rows from before the formats
-   * existed; app-written rows keep specific === closed + mount + open.
+   * (each side plays both roles; the list lives in specific.ts). Zero on rows
+   * from before a format existed; app-written rows keep
+   * specific === specBreakdownSum(row).
    */
   specClosed: number
   specMount: number
   specOpen: number
+  specSide: number
+  specBack: number
+  specTurtle: number
   /** Submission counting retired from the UI 2026-10; kept for historical rows. */
   subsFor: number
   subsAgainst: number
@@ -119,6 +123,9 @@ export interface LogForm {
   specClosed: number
   specMount: number
   specOpen: number
+  specSide: number
+  specBack: number
+  specTurtle: number
   roundMin: RoundMin
   /** Whole class/open-mat duration in minutes. */
   durationMin: number
