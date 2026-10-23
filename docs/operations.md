@@ -289,6 +289,20 @@ tables with real-looking rows — the app cannot delete them (CLAUDE.md warns th
 about the UI). Use `demo-` prefixed ids if you must write, and delete them as owner
 afterwards.
 
+## Dev servers write to the live database
+
+`npm run dev` ships the public key, so a dev server syncs exactly like the deployed app: a session, competition or promotion saved through the UI is upserted to the live tables, **and so is the focus/tagList/settings blob** — `setFocus`, `addTag` (and anything else that stamps `stateUpdatedAt`) push `app_state` on the 2-second debounce, even with `window.rollbook.seed()` demo sessions loaded (demo ids are filtered; the state blob has no demo scope). LWW then makes every other device adopt that blob on its next pull.
+
+**The rule:** any click-through that touches focus, tags, Promote or Save runs with sync off — `npm run dev -- --mode nosync` (`.env.nosync` sets `VITE_SYNC_OFF=1`, honored by `src/config.ts — SYNC_ENABLED`; the Home sync label then disappears — status `disabled` renders no label). Keep `.claude/launch.json` dev entries on that flag.
+
+**Incident, 2026-10-23.** A browser check of the new skill tree tapped "Set as focus" on seeded data with sync on; the push replaced the live `app_state` row with the 14 default tags plus two test tags and the focus "Closed guard". Recovery (owner-approved, via the Supabase MCP, before any phone sync):
+
+```sql
+update app_state set updated_at = '2026-01-01T00:00:00Z' where user_id = 'dmitrii' returning user_id, updated_at;
+```
+
+Backdating the remote stamp makes the phone's own (newer) copy win on its next pull, after which its push-back restores the real list and focus — no reconstruction needed, as long as no *other* device has synced the bad blob in between. **Then clear the originating browser:** the dev browser's `localStorage` (`rollbook:v1` at the `localhost:5173` origin, shared by every mode) still holds the bad blob with the newest stamp of all, and a later sync-on `npm run dev` would re-push it without a single click — `useSync`'s launch cycle calls `requestPush()` after every pull, `mergeAppData` keeps local state unless remote is strictly newer, and `pushAll` sends `app_state` whenever `stateUpdatedAt > 0`. Run `window.rollbook.clear()` (or delete the key) in that browser profile before it ever runs with sync on again; the 2026-10-23 recovery did. The same recipe fixes any wrongly pushed state blob while a device still holds the good one; if every device has already adopted it, the list has to be rebuilt by hand (append order is invisible — every picker orders by curriculum — but the focus goal and settings are not recoverable).
+
 ## Deploy pipeline
 
 **A push to `main` is a deploy** — `.github/workflows/deploy.yml` runs on every push:

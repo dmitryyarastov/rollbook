@@ -252,7 +252,14 @@ export default function App() {
           />
         )}
         {tab === 'tech' && <Techniques data={data} todayIso={todayIso} onChangeFocus={setFocus} />}
-        {tab === 'progress' && <Progress data={data} todayIso={todayIso} onAddPromotion={addPromotion} />}
+        {tab === 'progress' && (
+          <Progress
+            data={data}
+            todayIso={todayIso}
+            onAddPromotion={addPromotion}
+            onChangeFocus={setFocus}
+          />
+        )}
       </main>
       <TabBar tab={tab} onPick={pickTab} />
     </div>

@@ -17,6 +17,7 @@ a system:
 | [docs/sync.md](docs/sync.md) | the whole sync protocol + the playbook for adding synced fields/entities |
 | [docs/stats.md](docs/stats.md) | every derived stat's exact semantics |
 | [docs/curriculum.md](docs/curriculum.md) | Gracie Barra tag ordering: research, mapping, judgment calls |
+| [docs/skill-tree.md](docs/skill-tree.md) | the skill tree: branches from the curriculum groups, leaves from the tags, progress from the log; owner rulings |
 | [docs/design-system.md](docs/design-system.md) | Nocturne rules, tokens, component/CSS conventions |
 | [docs/build-pwa.md](docs/build-pwa.md) | vite, service worker strategy, precache injection, deploy |
 | [docs/testing.md](docs/testing.md) | suites, factories, what to update when changing X |
@@ -25,7 +26,8 @@ a system:
 ## Commands
 
 ```bash
-npm run dev        # vite dev server, port 5173 (often already running)
+npm run dev        # vite dev server, port 5173 (often already running) — SYNCS TO THE LIVE DB
+npm run dev -- --mode nosync   # same, sync off (.env.nosync) — the only safe mode for clicking around with demo data
 npm test           # vitest — all suites must pass before any commit
 npm run build      # strict tsc + vite build + SW precache injection
 npm run preview    # serve the production build (port 4173) — needed to test the SW
@@ -36,7 +38,11 @@ Browser console: `window.rollbook.seed()` loads deterministic demo data,
 (`demo-` ids never sync), but **a real session/competition/promotion saved
 through the UI syncs to the live database and cannot be deleted by the app** —
 never save real-looking test entries (or tap Promote "to see it work") against
-the live backend.
+the live backend. **Editing the focus goal or adding a tag pushes too** — the
+focus/tagList/settings blob goes up whenever `stateUpdatedAt` is stamped, even
+with demo sessions loaded (on 2026-10-23 a "Set as focus" tap on seeded data
+overwrote the live tag list; recovery in docs/operations.md). Run dev servers
+with `--mode nosync` for any click-through.
 
 ## Working rules
 
@@ -159,6 +165,15 @@ the live backend.
   dates/titles; that's known historical data, not a bug to hunt.
 - No settings UI exists **by design** (per the handoff); `weeklyGoal` and
   `showMilestones` are storage-only knobs.
+- **The skill tree stores nothing and keeps no tree data in code** (October
+  2026, Progress → Skill tree): branches are the curriculum position groups,
+  leaves are the tags themselves (every list or session-borne tag, dim until
+  trained), progress
+  is the characteristic scale (25/60 flat grants, 50/25 curve) derived in
+  `src/tree.ts`; typed swap rounds light position branches (`SPEC_GROUPS`).
+  The owner rejected importing his curated RPGreal tree — don't re-propose a
+  hand-built hierarchy; a tag joins the right branch through `TAG_GROUP`.
+  "Set as focus" on a leaf writes the weekly focus (see docs/skill-tree.md).
 - Perf posture: the app is deliberately simple — `useMemo` guards the
   per-keystroke/per-toggle paths; `React.memo` on rows was considered and
   rejected (API churn for negligible gain). The SW serves hashed assets

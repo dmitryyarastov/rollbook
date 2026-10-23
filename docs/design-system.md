@@ -2,7 +2,7 @@
 
 Rollbook's UI implements the **Nocturne** design system from a high-fidelity design handoff (the prototype "BJJ Tracker.dc.html" and its README). Treat the rules below as law, not preference: every pixel value in `src/app.css` traces back to that handoff. When adding UI, reuse the existing vocabulary rather than inventing new patterns — an AI agent extending this app should be able to build a new card, row, or form control entirely from the classes and conventions documented here.
 
-Sibling docs: [architecture.md](architecture.md) (component tree, state flow), [data-model.md](data-model.md) (the types rendered here), [curriculum.md](curriculum.md) (tag ordering used by chip pickers and the tag cloud), [build-pwa.md](build-pwa.md) (font precache interaction), [testing.md](testing.md).
+Sibling docs: [architecture.md](architecture.md) (component tree, state flow), [data-model.md](data-model.md) (the types rendered here), [curriculum.md](curriculum.md) (tag ordering used by chip pickers and the tag cloud), [build-pwa.md](build-pwa.md) (font precache interaction), [skill-tree.md](skill-tree.md) (the Progress skill-tree outline), [testing.md](testing.md).
 
 ## The Nocturne rules (non-negotiable)
 
@@ -59,7 +59,7 @@ All component CSS lives in `src/app.css` as **ordered sections** delimited by `/
 2. `Type` — `.screen-title`, `.screen-sub`, `.kicker`, `.section-label`, `.micro`, `.empty`, `.section-head`, `.label-row`, `.link`
 3. `Cards` — `.card`, `.card--lg`, `.card--accent`
 4. `Home: header` — `.home-head`, `.home-title`, `.home-date`, `.sync-note`
-5. `Home: level` — `.rank-row`, `.rank-label`, `.level-row`, `.level-chip`, `.level-track`, `.level-fill`, `.level-xp` (the track/fill pair is also reused by the Progress characteristic cards)
+5. `Home: level` — `.rank-row`, `.rank-label`, `.level-row`, `.level-chip`, `.level-track`, `.level-fill`, `.level-xp` (the track/fill pair is also reused by the Progress characteristic cards and the skill-tree branch cards)
 6. `Home: hero card` — `.hero`, `.hero-num`, `.weekbars`
 7. `Stat cards` — `.stat-row`, `.stat-card` (both Home stat cards — Streak and Specific · week — share `.stat-line`/`.stat-n`/`.stat-u`/`.stat-note`, as do the Progress XP tiles; the old `.subs-line` block left with the Subs card, 2026-10)
 8. `Focus card` — `.focus`, `.progress-track`, `.icon-btn`, `.focus-panel`, `.field-label`, `.input`
@@ -75,7 +75,8 @@ All component CSS lives in `src/app.css` as **ordered sections** delimited by `/
 18. `Progress: XP + characteristics` — `.stat-n--xp`, `.xp-card`, `.xp-spark`, `.levels-sublabel`, `.crow-char` + `-head`/`-label`/`-lv`/`-xp` and `--idle` (the Levels section's character and characteristic cards; they reuse `.level-track`/`.level-fill` from `Home: level`)
 19. `Progress: streak flames` — `.frow`, `.frow-flame`, `.frow-n`, `.frow-label`, `.frow-best`, `.frow--cold`
 20. `Progress screen` — `.streak-card`, `.ring`, `.vol-card`, `.mrows`
-21. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
+21. `Progress: skill tree` — `.tree`, `.tree-branch` (+ `--idle`), `.tree-head` (+ `::after` hit extension), `.tree-caret`, `.tree-head-label`, `.tree-cov`, `.tree-rows`, `.tree-row` (+ `--idle`/`--sel`/`--focus`), `.tree-row-label`, `.tree-row-focus`, `.tree-row-track`/`.tree-row-fill`, `.tree-detail` + `-line`/`-xp`/`-actions`/`-focus` (the LV chips reuse `.level-chip` with an idle override, the branch cards `.level-track`/`.level-fill`)
+22. `Tab bar` — `.tabbar`, `.tab`, `.tab-log`
 
 **Where a new section goes:** shared primitives extend an existing early section (Type/Cards/Chips); a screen-specific block goes adjacent to its screen's existing sections, sub-scoped with a `Screen: feature` title (the pattern set by `Log: when` and `Techniques: curriculum groups`). The tab bar stays last. Never scatter a component's rules across sections.
 
@@ -85,7 +86,7 @@ Hover states are always wrapped in `@media (hover: hover)` (touch devices must n
 
 - Block: `.chip`, `.srow`, `.match`. Element: single hyphen, `.srow-title`, `.match-head` (not BEM's `__`). Modifier: double hyphen, `.chip--on`, `.srow--open`, `.card--lg`, `.trow-fill--first`.
 - Modifiers are applied **alongside** the base class in JSX (`className={`card srow${expanded ? ' srow--open' : ''}`}`), composed by string concatenation — there is no classnames library and none should be added.
-- Prefixes group by screen where classes are screen-local: `srow-`/`crow-` (history rows), `log-`, `match-`, `trow-`, `vol-`, `mrow-`, `hero-`, `focus-`, `level-` (the shared XP-level grammar), `xp-` (the Progress Experience card), `belt-` (the belt glyph's parts and the belt card). Caveat: `.crow-char*` is the Progress **characteristic** card block, not a competition row — the `crow-char` compound is its block name.
+- Prefixes group by screen where classes are screen-local: `srow-`/`crow-` (history rows), `log-`, `match-`, `trow-`, `vol-`, `mrow-`, `hero-`, `focus-`, `level-` (the shared XP-level grammar), `xp-` (the Progress Experience card), `belt-` (the belt glyph's parts and the belt card), `tree-` (the Progress skill-tree outline). Caveat: `.crow-char*` is the Progress **characteristic** card block, not a competition row — the `crow-char` compound is its block name.
 
 ## Component contracts
 
@@ -139,6 +140,10 @@ The `TABS` array is the registration point: `{ id: Tab; label; icon?: Icon }`. *
 | `.srow` child structure (new element in SessionRow/CompRow) | app.css `display: block` coverage for the new span's class |
 | Fonts (weights/subsets in `src/main.tsx`) | rule 1 above forbids it; if a subset is ever added, re-check `scripts/sw-precache.mjs` `.woff` exclusion still holds ([build-pwa.md](build-pwa.md)) |
 | `.screen` bottom padding or `.tabbar` height | the other one — 110px clearance exists so content scrolls clear of the floating bar |
+
+### SkillTree — `src/components/SkillTree.tsx`
+
+The Progress skill-tree outline, built from existing vocabulary: branch cards are plain `card`s whose head is a full-width `<button aria-expanded>` row (caret + label + "explored / total" + the shared `.level-chip`, bleeding over the card padding with a `::after` extension so the whole strip is the target — rule 7) over the shared `.level-track`/`.level-fill`; tag rows are buttons too (label · `.level-chip` · a 40×3px accent `.tree-row-track`/`.tree-row-fill` — the `.progress-track` grammar at row size); the selected row's detail is an in-place accent-800-bordered box (no modal), ending in a bare `chip chip--tech` **Set as focus** button or the accent-300 text "Current focus". Untrained rows (`.tree-row--idle`) take the `crow-char--idle` treatment (neutral-600 text, empty track); the focus row gets accent-300 text and a 12px accent Target glyph (`role="img"` + `aria-label`, the BeltGlyph idiom) — the accent never fills anything here. Full contract and copy in [skill-tree.md](skill-tree.md).
 
 ## Established conventions — reuse, don't reinvent
 

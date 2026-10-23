@@ -58,7 +58,8 @@ export function levelFromXp(xp: number, base: number, step: number): LevelState 
 }
 
 export const characterLevel = (xp: number): LevelState => levelFromXp(xp, 100, 50)
-const characteristicLevel = (xp: number): LevelState => levelFromXp(xp, 50, 25)
+/** The 50/25 curve — shared by the characteristics and the skill-tree nodes (src/tree.ts). */
+export const characteristicLevel = (xp: number): LevelState => levelFromXp(xp, 50, 25)
 
 // ── Daily XP (tiles + year chart) ────────────────────────────────────────────
 
@@ -222,11 +223,16 @@ export const CHARACTERISTICS: Characteristic[] = [
   },
 ]
 
-const SESSION_CHAR_XP = 25
+/**
+ * The flat per-entry grants — 25 per session, 60 per competition. Exported so
+ * the skill tree (src/tree.ts) credits nodes on exactly the same scale as the
+ * characteristics instead of carrying its own copy.
+ */
+export const SESSION_CHAR_XP = 25
+export const COMP_CHAR_XP = 60
 
 /** Qualifying training sessions still needed to clear a characteristic's current level. */
 export const sessionsToNext = (c: LevelState): number => Math.ceil((c.need - c.into) / SESSION_CHAR_XP)
-const COMP_CHAR_XP = 60
 
 export interface CharacteristicState extends LevelState {
   id: string

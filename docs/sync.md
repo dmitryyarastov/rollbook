@@ -62,7 +62,7 @@ Call sites in `src/App.tsx`: `saveSession`, `saveComp`, `addPromotion`, `addTag`
 - `competitions?on_conflict=id` — all local comps passing `isPushable`, mapped by `toCompRow`. Skipped if none; tracked outside the strict list for 404 tolerance (below).
 - `promotions?on_conflict=id` — all local rank events passing `isPushable`, mapped by `toPromoRow` (`date` verbatim, `belt`/`stripes` as-is, epoch-ms timestamps as ISO `timestamptz`, `user_id` from `SYNC_USER_ID`). Skipped if none; tolerated on 404 exactly like competitions.
 
-All with `Prefer: resolution=merge-duplicates,return=minimal`. `isPushable` (`src/sync.ts`) excludes any id starting with `demo-`: demo seed data (`src/demo.ts`) is a local plaything and never syncs in either direction.
+All with `Prefer: resolution=merge-duplicates,return=minimal`. `isPushable` (`src/sync.ts`) excludes any id starting with `demo-`: demo seed data (`src/demo.ts`) is a local plaything and never syncs in either direction — **rows only**: the seed's `tagList`/`focus` ride in the app_state blob and go up with the next stamped state edit (`setFocus`/`addTag`), see "Dev servers write to the live database" in [operations.md](operations.md).
 
 ## mergeById semantics
 
@@ -132,7 +132,7 @@ A missing **column** on an existing table is deliberately loud, not tolerated: P
 
 `src/sync.ts` — `type SyncStatus = 'disabled' | 'syncing' | 'synced' | 'offline' | 'error'`.
 
-- Initial: `'disabled'` when `SYNC_ENABLED` is false (`src/config.ts` — empty URL/key turns the whole feature off; a fresh clone runs local-only), else `'syncing'`.
+- Initial: `'disabled'` when `SYNC_ENABLED` is false (`src/config.ts` — empty URL/key turns the whole feature off, so a fresh clone runs local-only; so does `VITE_SYNC_OFF=1`, the `npm run dev -- --mode nosync` dev mode), else `'syncing'`.
 - Every cycle/push start → `'syncing'`; success → `'synced'`; failure → `fail()` picks `'offline'` vs `'error'` by `navigator.onLine`.
 - Rendered only on the Home screen (`src/screens/Home.tsx` — `SYNC_LABELS`); `disabled` maps to `null` (nothing shown). `'offline'` reads "offline — will sync", which is honest: the `online` trigger will fire a cycle.
 

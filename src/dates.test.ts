@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, autoTitle, dayOfYear, fmtShort, fmtTime, fmtToday, mondayOf, parseIso, resolveWhen, toHhmm, toIso, weekdayBadge } from './dates'
+import { addDays, autoTitle, dayOfYear, daysBetween, fmtShort, fmtTime, fmtToday, mondayOf, parseIso, resolveWhen, toHhmm, toIso, weekdayBadge } from './dates'
 
 describe('dates', () => {
   it('round-trips local iso dates', () => {
@@ -24,6 +24,13 @@ describe('dates', () => {
     expect(fmtShort('2026-08-01')).toBe('Aug 1')
     expect(weekdayBadge('2026-07-31')).toBe('FRI')
     expect(weekdayBadge('2026-07-29')).toBe('WED')
+  })
+
+  it('counts whole days between local dates, DST-safe', () => {
+    expect(daysBetween('2026-07-27', '2026-08-02')).toBe(6)
+    expect(daysBetween('2026-08-02', '2026-07-27')).toBe(-6)
+    expect(daysBetween('2026-08-02', '2026-08-02')).toBe(0)
+    expect(daysBetween('2026-03-01', '2026-04-01')).toBe(31) // spans the spring DST change
   })
 
   it('computes day of year', () => {

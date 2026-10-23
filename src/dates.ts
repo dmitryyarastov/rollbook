@@ -54,6 +54,11 @@ export function monthFull(monthIndex: number): string {
   return MONTHS_FULL[monthIndex]
 }
 
+/** Whole days from `fromIso` to `toIso` (negative when `toIso` is earlier); DST-safe via rounding. */
+export function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((parseIso(toIso).getTime() - parseIso(fromIso).getTime()) / 86400000)
+}
+
 /** 1-based day of year. */
 export function dayOfYear(iso: string): number {
   const d = parseIso(iso)

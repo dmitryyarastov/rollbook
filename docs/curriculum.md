@@ -1,6 +1,6 @@
 # Curriculum ordering
 
-`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure module with two jobs: display-time tag ordering — it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order — and the open-guard tag whitelist behind the competition milestone (`isOpenGuardTag`, below). A third consumer has since attached to `groupOfTag`: the characteristic matchers in `src/xp.ts` (see "Beyond ordering" below and [stats.md](stats.md)).
+`src/curriculum.ts` orders technique tags by the Gracie Barra (GB) curriculum's position-theme sequence. It is a pure module with two jobs: display-time tag ordering — it never mutates the persisted `tagList` (see [data-model.md](data-model.md)), which stays append-only master data in input order — and the open-guard tag whitelist behind the competition milestone (`isOpenGuardTag`, below). Two more consumers have since attached to `groupOfTag`: the characteristic matchers in `src/xp.ts` and, since 2026-10-23, the skill tree in `src/tree.ts` (see "Beyond ordering" below, [stats.md](stats.md) and [skill-tree.md](skill-tree.md)).
 
 ## GB curriculum research (why the module looks like this)
 
@@ -99,8 +99,8 @@ All of these are pure and cheap; callers memoize the ordering functions where th
 
 | If you change | You must also change |
 |---|---|
-| `CURRICULUM_GROUPS` order, ids, or labels | Pinned sequence + section-label tests in `src/curriculum.test.ts`; `CurriculumGroupId` union |
-| `TAG_GROUP` entries | `REAL_TAGS` ordering fixture and judgment-call tests in `src/curriculum.test.ts`; characteristic XP in `src/xp.ts` — the `passing`, `standing` (takedowns-gi / wrestling-nogi), and `legs` matchers read `groupOfTag`, so moving a tag between those groups silently moves its lifetime XP (`src/xp.test.ts`, [stats.md](stats.md)) |
+| `CURRICULUM_GROUPS` order, ids, or labels | Pinned sequence + section-label tests in `src/curriculum.test.ts`; `CurriculumGroupId` union; the skill tree's branch order and labels follow it (`src/tree.test.ts` pins both) |
+| `TAG_GROUP` entries | `REAL_TAGS` ordering fixture and judgment-call tests in `src/curriculum.test.ts`; characteristic XP in `src/xp.ts` — the `passing`, `standing` (takedowns-gi / wrestling-nogi), and `legs` matchers read `groupOfTag`, so moving a tag between those groups silently moves its lifetime XP (`src/xp.test.ts`, [stats.md](stats.md)); the skill tree (`src/tree.ts`) places every tag's leaf and credits its branch by `groupOfTag`, so a move also re-homes the leaf and shifts branch XP (`src/tree.test.ts` if it uses that tag, [skill-tree.md](skill-tree.md)) |
 | `DEFAULT_TAGS` in `src/store.ts` (add a tag) | Add a `TAG_GROUP` entry, or the never-`other` test fails |
 | `groupOfTag` normalization | Key format of every `TAG_GROUP` entry (they must stay pre-normalized) |
 | `OPEN_GUARD_TAGS` / `isOpenGuardTag` | `openGuardMilestone` behavior and its tests in `src/stats.test.ts` ([stats.md](stats.md)); entries must stay pre-normalized like `TAG_GROUP` keys |
@@ -108,11 +108,13 @@ All of these are pure and cheap; callers memoize the ordering functions where th
 ## Where ordering is applied (and where it is not)
 
 - **Log chips** — `src/App.tsx` computes `logTagList` in a `useMemo`: `orderTagsByCurriculum(withSessionTags(data.tagList, data.sessions))`, passed as `tagList` to `src/screens/Log.tsx`. `withSessionTags` (`src/stats.ts`, see [stats.md](stats.md)) appends tags that exist only on sessions, display-time, without persisting them. The memo exists because Log form state lives in `App`, so every keystroke re-renders it.
-- **Focus tag picker** — `src/components/FocusCard.tsx` calls `orderTagsByCurriculum(tagList)` on its prop internally. Both call sites (`src/screens/Home.tsx`, `src/screens/Techniques.tsx`) pass raw `data.tagList` — **not** `withSessionTags` — so session-only tags do not appear in the focus picker. That asymmetry is current fact, not accident-proofed; keep it in mind if unifying.
+- **Focus tag picker** — `src/components/FocusCard.tsx` calls `orderTagsByCurriculum(tagList)` on its prop internally. Both call sites (`src/screens/Home.tsx`, `src/screens/Techniques.tsx`) pass raw `data.tagList` — **not** `withSessionTags` — so session-only tags do not appear in the focus picker. That asymmetry is current fact, not accident-proofed; keep it in mind if unifying. (One more focus-setting path exists since 2026-10-23: the skill tree's "Set as focus" on Progress, whose leaves come from `withSessionTags` — a session-only tag set there becomes `focus.tag` but shows no selected chip in the FocusCard picker; see [skill-tree.md](skill-tree.md).)
 - **Techniques grouped cloud** — `src/screens/Techniques.tsx` uses `groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions))` inside its `useMemo`, rendering one `cloud-group` block per section with the section `label` as the header (styles in `src/app.css`, see [design-system.md](design-system.md)).
 
 **Not applied to persisted data.** `data.tagList` order is untouched everywhere: `addTag` in `src/App.tsx` appends; sync ([sync.md](sync.md)) pushes the array verbatim and never reorders it on pull (the pull sanitizer only type-filters entries, falling back to the local list when empty). Curriculum ordering is a lens over master data, never a write.
 
-## Beyond ordering: the XP characteristic matchers
+## Beyond ordering: the XP characteristic matchers and the skill tree
+
+The skill tree ([skill-tree.md](skill-tree.md)) is the newest consumer of `groupOfTag`: `TAG_GROUP` **is** its mapping. `src/tree.ts — skillTree` makes one branch per `CURRICULUM_GROUPS` entry and files every tag's leaf under `groupOfTag(tag)`, so an unmapped tag shows under Other until it gets an entry here, and mapping it moves the leaf (and its branch credit) on the next render — no tree data lives anywhere else.
 
 `src/xp.ts — CHARACTERISTICS` matches session/comp tags through `groupOfTag` for four of the six lifelong attributes: `passing` (the `passing` group), `takedowns-gi` / `wrestling-nogi` (the `standing` group, split by the entry's `gi` flag), and `leglocks` (the `legs` group). The other two matchers — guard retention and top control — keep their own exact-tag whitelists inside `src/xp.ts` (same no-heuristics policy as `TAG_GROUP`: pre-normalized exact membership, spelling variants as separate entries, extend the set, never fuzz the match). The coupling is live in both directions of intent: extending `TAG_GROUP` so a new tag orders correctly **also** enrolls it in the matching characteristic — usually what's wanted, but check `src/xp.test.ts` when the group is `passing`/`standing`/`legs` ([stats.md](stats.md)).
