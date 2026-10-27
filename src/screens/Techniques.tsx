@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { FocusCard } from '../components/FocusCard'
+import { SkillTree } from '../components/SkillTree'
 import { groupTagsByCurriculum } from '../curriculum'
 import { focusProgress, tagCounts30d, withSessionTags } from '../stats'
+import { skillTree } from '../tree'
 import type { AppData, FocusGoal } from '../types'
 
 interface TechniquesProps {
@@ -11,7 +13,7 @@ interface TechniquesProps {
 }
 
 export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
-  const { top, max, byName, sections } = useMemo(() => {
+  const { top, max, byName, sections, tree } = useMemo(() => {
     const counts = tagCounts30d(data.sessions, todayIso)
     const top = counts.filter((c) => c.n > 0).slice(0, 6)
     return {
@@ -19,8 +21,10 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
       max: top[0]?.n ?? 1,
       byName: new Map(counts.map((c) => [c.name, c.n])),
       sections: groupTagsByCurriculum(withSessionTags(data.tagList, data.sessions)),
+      // The whole-history map of the game — the tree reads competitions too (a motivation layer).
+      tree: skillTree(data.tagList, data.sessions, data.competitions),
     }
-  }, [data.sessions, data.tagList, todayIso])
+  }, [data.sessions, data.competitions, data.tagList, todayIso])
 
   return (
     <div className="screen">
@@ -54,6 +58,15 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
       ) : (
         <div className="empty">Tag techniques when you log sessions to see them here.</div>
       )}
+
+      <div className="section-label label-row">Skill tree</div>
+      <SkillTree
+        tree={tree}
+        todayIso={todayIso}
+        focusTag={data.focus.tag}
+        // A leaf IS a tag, so "Set as focus" links it directly and titles the goal after it.
+        onFocusTag={(tag) => onChangeFocus({ title: tag, tag })}
+      />
 
       <div className="section-label label-row">All tags</div>
       {sections.map((sec) => (

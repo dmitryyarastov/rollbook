@@ -27,7 +27,8 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
 const norm = (tag: string) => tag.trim().toLowerCase()
 
 /**
- * The skill tree as a collapsible outline: one card per position branch
+ * The skill tree as a collapsible outline (Techniques screen, beside the
+ * Focus card it feeds): one card per position branch
  * with "explored n / m" and its own level; opening it lists the branch's
  * tags, most trained first. Tapping a tag opens an in-place detail
  * (sessions, last trained, XP to the next level) with "Set as focus" — the

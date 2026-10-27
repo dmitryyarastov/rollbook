@@ -166,7 +166,7 @@ with `--mode nosync` for any click-through.
 - No settings UI exists **by design** (per the handoff); `weeklyGoal` and
   `showMilestones` are storage-only knobs.
 - **The skill tree stores nothing and keeps no tree data in code** (October
-  2026, Progress → Skill tree): branches are the curriculum position groups,
+  2026, Techniques → Skill tree): branches are the curriculum position groups,
   leaves are the tags themselves (every list or session-borne tag, dim until
   trained), progress
   is the characteristic scale (25/60 flat grants, 50/25 curve) derived in

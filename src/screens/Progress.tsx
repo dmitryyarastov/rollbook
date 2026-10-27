@@ -2,7 +2,6 @@ import { Check, DotsThree, Flame } from '@phosphor-icons/react'
 import { useMemo } from 'react'
 import type { Rank } from '../belts'
 import { BeltCard } from '../components/BeltCard'
-import { SkillTree } from '../components/SkillTree'
 import { fmtShort } from '../dates'
 import {
   bestWeeklyStreak,
@@ -14,24 +13,22 @@ import {
   volume12w,
   yearTotals,
 } from '../stats'
-import { skillTree } from '../tree'
-import type { AppData, FocusGoal, Session } from '../types'
+import type { AppData, Session } from '../types'
 import { characteristics, characterLevel, sessionsToNext, totalXp, yearXp } from '../xp'
 
 interface ProgressProps {
   data: AppData
   todayIso: string
   onAddPromotion: (rank: Rank, dateIso: string) => void
-  onChangeFocus: (focus: FocusGoal) => void
 }
 
-export function Progress({ data, todayIso, onAddPromotion, onChangeFocus }: ProgressProps) {
+export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
   const goal = data.settings.weeklyGoal
   const st = streak(data.sessions, goal, todayIso)
   const vol = volume12w(data.sessions, todayIso)
   const maxVol = Math.max(...vol, 1)
   const year = yearTotals(data.sessions, todayIso)
-  const { flames, xp, chars, totalXpAll, lvl, tree } = useMemo(() => {
+  const { flames, xp, chars, totalXpAll, lvl } = useMemo(() => {
     const trains = (week: Session[]) => week.length >= goal
     const mixes = (week: Session[]) => week.some((s) => s.gi) && week.some((s) => !s.gi)
     const focuses = (week: Session[]) => data.focus.tag !== '' && week.some((s) => s.tags.includes(data.focus.tag))
@@ -57,9 +54,8 @@ export function Progress({ data, todayIso, onAddPromotion, onChangeFocus }: Prog
       chars: characteristics(data.sessions, data.competitions),
       totalXpAll: totalXp(data.sessions, data.competitions),
       lvl: characterLevel(totalXp(data.sessions, data.competitions)),
-      tree: skillTree(data.tagList, data.sessions, data.competitions),
     }
-  }, [data.sessions, data.competitions, data.tagList, data.focus.tag, goal, st.weeks, todayIso])
+  }, [data.sessions, data.competitions, data.focus.tag, goal, st.weeks, todayIso])
 
   return (
     <div className="screen">
@@ -118,15 +114,6 @@ export function Progress({ data, todayIso, onAddPromotion, onChangeFocus }: Prog
           )
         })}
       </div>
-
-      <div className="section-label label-row">Skill tree</div>
-      <SkillTree
-        tree={tree}
-        todayIso={todayIso}
-        focusTag={data.focus.tag}
-        // A leaf IS a tag, so "Set as focus" links it directly and titles the goal after it.
-        onFocusTag={(tag) => onChangeFocus({ title: tag, tag })}
-      />
 
       <div className="section-label label-row">Sparring volume · 12 weeks</div>
       <section className="card vol-card">
