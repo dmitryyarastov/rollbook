@@ -2,6 +2,7 @@ import { Check, DotsThree, Flame } from '@phosphor-icons/react'
 import { useMemo } from 'react'
 import type { Rank } from '../belts'
 import { BeltCard } from '../components/BeltCard'
+import { BarLegend, SplitBar } from '../components/SplitBar'
 import { fmtShort } from '../dates'
 import {
   bestWeeklyStreak,
@@ -10,7 +11,7 @@ import {
   giNoGiStreak,
   milestones,
   streak,
-  volume12w,
+  volume12wSplit,
   yearTotals,
 } from '../stats'
 import type { AppData, Session } from '../types'
@@ -25,8 +26,8 @@ interface ProgressProps {
 export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
   const goal = data.settings.weeklyGoal
   const st = streak(data.sessions, goal, todayIso)
-  const vol = volume12w(data.sessions, todayIso)
-  const maxVol = Math.max(...vol, 1)
+  const vol = volume12wSplit(data.sessions, todayIso)
+  const maxVol = Math.max(...vol.map((w) => w.rounds), 1)
   const year = yearTotals(data.sessions, todayIso)
   const { flames, xp, chars, totalXpAll, lvl } = useMemo(() => {
     const trains = (week: Session[]) => week.length >= goal
@@ -118,12 +119,15 @@ export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
       <div className="section-label label-row">Sparring volume · 12 weeks</div>
       <section className="card vol-card">
         <div className="vol-bars">
-          {vol.map((v, i) => (
+          {vol.map((w, i) => (
             <div key={i} className="vol-col">
-              <div className="vol-n">{v}</div>
-              <div
-                className={`vol-fill${i === vol.length - 1 ? ' vol-fill--cur' : ''}`}
-                style={{ height: v > 0 ? Math.max(4, Math.round((v / maxVol) * 78)) : 2 }}
+              <div className="vol-n">{w.rounds}</div>
+              <SplitBar
+                rounds={w.rounds}
+                gi={w.gi}
+                rpe={w.rpe}
+                height={w.rounds > 0 ? Math.max(4, Math.round((w.rounds / maxVol) * 78)) : 2}
+                current={i === vol.length - 1}
               />
             </div>
           ))}
@@ -132,6 +136,7 @@ export function Progress({ data, todayIso, onAddPromotion }: ProgressProps) {
           <span>12 wks ago</span>
           <span>this week</span>
         </div>
+        <BarLegend />
       </section>
 
       <div className="section-label label-row">Streaks</div>

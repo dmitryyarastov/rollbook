@@ -16,6 +16,7 @@ import {
   sessionRounds,
   streak,
   volume12w,
+  volume12wSplit,
   weekSummary,
   yearMilestone,
   yearTotals,
@@ -95,6 +96,40 @@ describe('weekSummary', () => {
     expect(formatHours(w.hours)).toBe('1.6') // 4*5 + 8*6 + 6*5 = 98 min
     expect(sessionRounds(sessions[1])).toBe(8)
   })
+
+  it('carries the gi share of each day for the stacked bars', () => {
+    const sessions = [
+      mk('2026-07-27', { rolls: 4, gi: true }), // Mon — all gi
+      mk('2026-07-29', { rolls: 3, gi: false }), // Wed — no-gi class…
+      mk('2026-07-29', { rolls: 2, specific: 1, gi: true }), // …then a gi class the same evening (3 combined)
+      mk('2026-07-31', { rolls: 6, gi: false }), // Fri — all no-gi
+    ]
+    const w = weekSummary(sessions, TODAY)
+    expect(w.bars.map((b) => [b.rounds, b.gi])).toEqual([
+      [4, 4],
+      [0, 0],
+      [6, 3],
+      [0, 0],
+      [6, 0],
+      [0, 0],
+      [0, 0],
+    ])
+    // no-gi is the remainder — never a third field to drift from the total
+    expect(w.bars.every((b) => b.gi <= b.rounds)).toBe(true)
+  })
+
+  it('averages each day\'s RPE weighted by rounds, null without one', () => {
+    const sessions = [
+      mk('2026-07-27', { rolls: 4, intensity: 2 }), // Mon — one class
+      mk('2026-07-29', { rolls: 2, intensity: 4 }), // Wed — hard short class…
+      mk('2026-07-29', { rolls: 4, specific: 2, intensity: 3 }), // …then 6 easier rounds: (2·4 + 6·3) / 8
+      mk('2026-07-29', { rolls: 5, intensity: null }), // …and a legacy row: its rounds stay out of the denominator
+      mk('2026-07-30', { rolls: 0, specific: 0, intensity: 5 }), // Thu — RPE but no rounds to weight
+      mk('2026-07-31', { rolls: 6, intensity: null }), // Fri — legacy row, no RPE
+    ]
+    const w = weekSummary(sessions, TODAY)
+    expect(w.bars.map((b) => b.rpe)).toEqual([2, null, 3.25, null, null, null, null])
+  })
 })
 
 describe('streak', () => {
@@ -170,6 +205,22 @@ describe('volume and year totals', () => {
     const s = [mk('2026-07-27', { rolls: 3, specific: 2 })]
     expect(volume12w(s, TODAY)[11]).toBe(5)
     expect(yearTotals(s, TODAY).rolls).toBe(5)
+  })
+
+  it('splits each week into its gi share, with volume12w as the totals of the same series', () => {
+    const s = [
+      mk('2026-07-27', { rolls: 3, gi: true, intensity: 3 }), // current week
+      mk('2026-07-30', { rolls: 2, specific: 2, gi: false, intensity: 5 }), // current week, no-gi (4 combined)
+      mk('2026-07-20', { rolls: 5, gi: false, intensity: null }), // previous week, all no-gi, no RPE logged
+      mk('2026-05-11', { rolls: 7, gi: true, intensity: 2 }), // first bucket, all gi
+    ]
+    const split = volume12wSplit(s, TODAY)
+    expect(split).toHaveLength(12)
+    expect(split[11]).toEqual({ rounds: 7, gi: 3, rpe: (3 * 3 + 4 * 5) / 7 }) // rounds-weighted mean
+    expect(split[10]).toEqual({ rounds: 5, gi: 0, rpe: null })
+    expect(split[0]).toEqual({ rounds: 7, gi: 7, rpe: 2 })
+    expect(split[5]).toEqual({ rounds: 0, gi: 0, rpe: null })
+    expect(split.map((w) => w.rounds)).toEqual(volume12w(s, TODAY))
   })
 
   it('sums the calendar year only', () => {

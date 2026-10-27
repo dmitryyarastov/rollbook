@@ -99,8 +99,11 @@ with `--mode nosync` for any click-through.
    outlined buttons; component CSS appended to `src/app.css` as ordered
    `/* ── section ── */` blocks; longhand font properties; form controls
    need explicit `font-family: inherit`. The belt hues in the `Belt` CSS
-   section are the one deliberate non-token color exception (semantic,
-   glyph-sized only) — not a violation to fix, and not precedent.
+   section and the RPE heat marks (`Session intensity` + `Chart heat`
+   sections — the 3px row edge and the 3px cap over a chart bar, warming
+   from the accent to red for RPE 4–5, owner's call 2026-10-27) are the two
+   deliberate non-token color exceptions (semantic, line/glyph-sized only) —
+   not violations to fix, and not precedent.
 8. **The precache contract**: `scripts/sw-precache.mjs` text-replaces the
    `const CACHE = …` and `const PRECACHE = …` lines in `public/sw.js` — keep
    those two lines' exact shape.
