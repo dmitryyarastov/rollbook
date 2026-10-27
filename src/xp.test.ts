@@ -202,11 +202,13 @@ describe('characteristics', () => {
       [
         mk(TODAY, { gi: true, tags: ['Yoko Tomoe Nage'] }), // takedowns gi
         mk(TODAY, { tags: ['Opening Closed Guard'] }), // passing
-        mk(TODAY, { gi: false, tags: ['Cow catcher'] }), // top control
+        mk(TODAY, { gi: false, tags: ['Cow catcher'] }), // top control AND wrestling no-gi (standing since 2026-10-27)
+        mk(TODAY, { gi: false, tags: ['Single leg takedown'] }), // wrestling no-gi (mapped to standing 2026-10-27)
       ],
       [],
     )
     expect(byId(states, 'takedowns-gi').xp).toBe(25)
+    expect(byId(states, 'wrestling-nogi').xp).toBe(50)
     expect(byId(states, 'passing').xp).toBe(25)
     expect(byId(states, 'top-control').xp).toBe(25)
   })

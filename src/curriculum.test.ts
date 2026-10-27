@@ -106,9 +106,13 @@ describe('groupOfTag judgment calls (documented deviations)', () => {
   it('maps every tag in the live synced data (2026-10-16 audit)', () => {
     expect(groupOfTag('Yoko Tomoe Nage')).toBe('standing')
     expect(groupOfTag('Opening Closed Guard')).toBe('passing')
-    expect(groupOfTag('Cow catcher')).toBe('back')
+    expect(groupOfTag('Cow catcher')).toBe('standing') // moved from back by owner ruling, 2026-10-27
     expect(groupOfTag('Half Butterfly')).toBe('guard')
     expect(isOpenGuardTag('Half Butterfly')).toBe(false) // owner ruling: half-guard variant
+    // 2026-10-27: the skill tree showed this live tag under Other; the owner moved it to Standing
+    expect(groupOfTag('Single leg takedown')).toBe('standing')
+    expect(groupOfTag('single-leg takedown')).toBe('standing')
+    expect(groupOfTag('Double leg takedown')).toBe('standing')
   })
 
   it('spot-checks the 2026-10 vocabulary harvest', () => {

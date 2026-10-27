@@ -48,7 +48,18 @@ const TAG_GROUP: Record<string, CurriculumGroupId> = {
   'wrestling': 'standing',
   'judo': 'standing',
   'single leg': 'standing',
+  'single-leg': 'standing',
+  'single leg takedown': 'standing', // live tag — it sat in Other until the owner moved it to Standing (2026-10-27)
+  'single-leg takedown': 'standing',
+  // Owner ruling 2026-10-27: the cow catcher is standing work for him (a
+  // front-headlock entry off the feet), not a back/turtle theme — moved from
+  // 'back' (the 2026-10-16 research placement). Still in TOP_CONTROL_TAGS
+  // (src/xp.ts), so it feeds Top control AND the gi-split standing attributes.
+  'cow catcher': 'standing',
   'double leg': 'standing',
+  'double-leg': 'standing',
+  'double leg takedown': 'standing',
+  'double-leg takedown': 'standing',
   'ankle pick': 'standing',
   'arm drag': 'standing',
   'snapdown': 'standing',
@@ -274,7 +285,6 @@ const TAG_GROUP: Record<string, CurriculumGroupId> = {
   'anaconda': 'back',
   'guillotine': 'back',
   'front headlock': 'back',
-  'cow catcher': 'back', // front-headlock control from the top — live tag; also feeds Top control
   'turtle': 'back',
   'turtle defense': 'back', // bottom-side turtle work — back & turtle theme, not top control
   'crucifix': 'back',

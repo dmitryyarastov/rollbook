@@ -74,10 +74,14 @@ A review queried the live synced tag list and found four real tags still in Othe
 
 - **`Yoko Tomoe Nage` → `standing`** — side variant of the harvested `tomoe nage`.
 - **`Opening Closed Guard` → `passing`** — same technique as `guard break`; GB teaches it in the guard-top weeks.
-- **`Cow catcher` → `back`**, and in `TOP_CONTROL_TAGS` — front-headlock control from the top, filed like `front headlock`.
+- **`Cow catcher` → `back`**, and in `TOP_CONTROL_TAGS` — front-headlock control from the top, filed like `front headlock`. *Superseded 2026-10-27: the owner moved it to `standing` (below); the `TOP_CONTROL_TAGS` entry stays.*
 - **`Half Butterfly` → `guard`**, **not** in `OPEN_GUARD_TAGS` — **owner ruling (2026-10-16): it is a half-guard variant**, so like z-guard it does not satisfy the open-guard milestone.
 
 Pinned by the "maps every tag in the live synced data" test. After any new tag appears in real use, re-run the audit query in [operations.md](operations.md)'s spirit: every live tag should land in a real group.
+
+**2026-10-27 — `Single leg takedown` → `standing`** (owner ruling). The skill tree ([skill-tree.md](skill-tree.md)) made the gap visible: the map knew `single leg` but not his tag's spelling, so the leaf sat under Other. Added with the hyphenated and double-leg twins (`single-leg`, `single-leg takedown`, `double leg takedown`, `double-leg`, `double-leg takedown`); as a `standing` tag it now also feeds Takedowns · Gi / Wrestling · No-Gi through `groupOfTag` (pinned in `src/xp.test.ts`). The tree is now the live audit: any tag under its Other branch is a missing `TAG_GROUP` entry.
+
+**2026-10-27 — `Cow catcher` → `standing`** (owner ruling, overriding the 2026-10-16 research placement under `back`): for him it is standing work, a front-headlock entry off the feet. It keeps its `TOP_CONTROL_TAGS` entry in `src/xp.ts` — removing it would silently lower his Top control level — so a cow-catcher session now feeds Top control **and** Takedowns · Gi / Wrestling · No-Gi (pinned in `src/xp.test.ts`). The front-headlock family's other members (`front headlock`, `darce`, `anaconda`, `guillotine`) stay under Back & turtle.
 
 ## Public API and semantics
 
