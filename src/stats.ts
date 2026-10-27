@@ -60,8 +60,26 @@ export interface WeekSummary {
   specific: number
   hours: number
   sessions: number
-  /** Mon..Sun, combined rounds. */
-  bars: { day: string; rounds: number }[]
+  /** Mon..Sun, combined rounds, the gi share of them, and the day's mean RPE (the stacked bars). */
+  bars: { day: string; rounds: number; gi: number; rpe: number | null }[]
+}
+
+const roundsOf = (pool: Session[]) => pool.reduce((a, s) => a + sessionRounds(s), 0)
+
+/**
+ * Rounds-weighted mean RPE of the sessions that logged one; null when none did
+ * (legacy history) or when those sessions carried no rounds to weight.
+ */
+function meanRpe(pool: Session[]): number | null {
+  let weight = 0
+  let sum = 0
+  for (const s of pool) {
+    if (s.intensity === null) continue
+    const n = sessionRounds(s)
+    weight += n
+    sum += n * s.intensity
+  }
+  return weight > 0 ? sum / weight : null
 }
 
 export function weekSummary(sessions: Session[], todayIso: string): WeekSummary {
@@ -71,7 +89,8 @@ export function weekSummary(sessions: Session[], todayIso: string): WeekSummary 
   const dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const bars = dayLetters.map((day, i) => {
     const date = addDays(mon, i)
-    return { day, rounds: inWeek.filter((s) => s.date === date).reduce((a, s) => a + sessionRounds(s), 0) }
+    const onDay = inWeek.filter((s) => s.date === date)
+    return { day, rounds: roundsOf(onDay), gi: roundsOf(onDay.filter((s) => s.gi)), rpe: meanRpe(onDay) }
   })
   return {
     rounds: inWeek.reduce((a, s) => a + sessionRounds(s), 0),
@@ -224,15 +243,29 @@ export function focusProgress(sessions: Session[], focusTag: string, todayIso: s
 
 // ── Longer horizons ──────────────────────────────────────────────────────────
 
-/** Rounds per week for the 12 weeks ending with the current one (oldest first). */
-export function volume12w(sessions: Session[], todayIso: string): number[] {
+export interface VolumeWeek {
+  /** Combined rounds in the week. */
+  rounds: number
+  /** The gi share of `rounds` (no-gi = rounds − gi). */
+  gi: number
+  /** Rounds-weighted mean RPE of the week's RPE-bearing sessions; null when none. */
+  rpe: number | null
+}
+
+/** Rounds per week, with the gi share, for the 12 weeks ending with the current one (oldest first). */
+export function volume12wSplit(sessions: Session[], todayIso: string): VolumeWeek[] {
   const curMon = mondayOf(todayIso)
   return Array.from({ length: 12 }, (_, i) => {
     const mon = addDays(curMon, (i - 11) * 7)
     const end = addDays(mon, 6)
-    return sessions.filter((s) => s.date >= mon && s.date <= end).reduce((a, s) => a + sessionRounds(s), 0)
+    const inWeek = sessions.filter((s) => s.date >= mon && s.date <= end)
+    return { rounds: roundsOf(inWeek), gi: roundsOf(inWeek.filter((s) => s.gi)), rpe: meanRpe(inWeek) }
   })
 }
+
+/** Rounds per week for the 12 weeks ending with the current one (oldest first). */
+export const volume12w = (sessions: Session[], todayIso: string): number[] =>
+  volume12wSplit(sessions, todayIso).map((w) => w.rounds)
 
 export function yearTotals(sessions: Session[], todayIso: string): { hours: number; rolls: number } {
   const year = todayIso.slice(0, 4)

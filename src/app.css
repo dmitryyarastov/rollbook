@@ -253,14 +253,6 @@
   gap: 5px;
   align-items: center;
 }
-.weekbar-fill {
-  width: 100%;
-  border-radius: 4px;
-  background: var(--color-neutral-900);
-}
-.weekbar-fill--on {
-  background: var(--color-accent-500);
-}
 .weekbar-day {
   font-size: 10px;
   line-height: 1;
@@ -1543,14 +1535,6 @@
   line-height: 1;
   color: var(--color-neutral-500);
 }
-.vol-fill {
-  width: 100%;
-  border-radius: 3px 3px 2px 2px;
-  background: var(--color-accent-800);
-}
-.vol-fill--cur {
-  background: var(--color-accent-500);
-}
 .vol-x {
   display: flex;
   justify-content: space-between;
@@ -1599,6 +1583,123 @@
   line-height: 1.25;
   color: var(--color-neutral-500);
   margin-top: 3px;
+}
+
+/* ── Session intensity (RPE heat rail) ── */
+/*
+ * The second bounded color exception (owner's call, 2026-10-27): a session's
+ * logged RPE warms its history row. Drawn ONLY as the 3px left rail of the
+ * row — never a fill, text, or chip state. The ramp stays in-system up to the
+ * middle (1 neutral, 2–3 accent) and warms toward red only for 4–5; rows
+ * without an RPE (history from before RPE logging began in September 2026)
+ * keep the plain card edge.
+ */
+:root {
+  --rpe-1: var(--color-neutral-700);
+  --rpe-2: var(--color-accent-700);
+  --rpe-3: var(--color-accent-500);
+  --rpe-4: #cf8a6b;
+  --rpe-5: #d9625c;
+}
+.srow--rpe1 {
+  --rpe: var(--rpe-1);
+}
+.srow--rpe2 {
+  --rpe: var(--rpe-2);
+}
+.srow--rpe3 {
+  --rpe: var(--rpe-3);
+}
+.srow--rpe4 {
+  --rpe: var(--rpe-4);
+}
+.srow--rpe5 {
+  --rpe: var(--rpe-5);
+}
+/* Declared with :hover too — the card hover rule resets every border side, and the rail must survive it. */
+.srow[class*='srow--rpe'],
+.srow[class*='srow--rpe']:hover {
+  border-left: 3px solid var(--rpe);
+  padding-left: 13px;
+}
+/* The chart caps share the ramp: a period's rounds-weighted mean RPE, rounded to the nearest step. */
+.bar-heat--rpe1 {
+  --rpe: var(--rpe-1);
+}
+.bar-heat--rpe2 {
+  --rpe: var(--rpe-2);
+}
+.bar-heat--rpe3 {
+  --rpe: var(--rpe-3);
+}
+.bar-heat--rpe4 {
+  --rpe: var(--rpe-4);
+}
+.bar-heat--rpe5 {
+  --rpe: var(--rpe-5);
+}
+
+/* ── Stacked gi / no-gi bars ── */
+/* SplitBar: gi at the base in the accent, no-gi stacked above in the neutral ramp (matches the row badges). */
+.bar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-neutral-900);
+}
+.bar-seg {
+  flex-basis: 0;
+  min-height: 2px;
+}
+.bar-seg--gi {
+  background: var(--color-accent-800);
+}
+.bar--cur .bar-seg--gi {
+  background: var(--color-accent-500);
+}
+.bar-seg--nogi {
+  background: var(--color-neutral-700);
+}
+.bar--cur .bar-seg--nogi {
+  background: var(--color-neutral-400);
+}
+.bar-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-neutral-600);
+}
+.bar-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bar-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* ── Chart heat (RPE cap) ── */
+/* SplitBar's wrapper: the 3px heat cap sits above the bar, outside its height, so bar scale stays exact. */
+.barstack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+.bar-heat {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rpe);
+}
+.bar-swatch--heat {
+  background: linear-gradient(90deg, var(--rpe-2), var(--rpe-3), var(--rpe-4), var(--rpe-5));
 }
 
 /* ── Tab bar ── */

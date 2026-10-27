@@ -4,6 +4,7 @@ import { BeltGlyph } from '../components/BeltGlyph'
 import { CompRow } from '../components/CompRow'
 import { FocusCard } from '../components/FocusCard'
 import { SessionRow } from '../components/SessionRow'
+import { BarLegend, SplitBar } from '../components/SplitBar'
 import { fmtToday } from '../dates'
 import { focusProgress, formatHours, historyFeed, streak, weekSummary } from '../stats'
 import { characterLevel, totalXp } from '../xp'
@@ -94,14 +95,12 @@ export function Home({ data, todayIso, syncStatus, onSeeAll, onOpenSession, onCh
         <div className="weekbars">
           {week.bars.map((b, i) => (
             <div key={i} className="weekbar">
-              <div
-                className={`weekbar-fill${b.rounds > 0 ? ' weekbar-fill--on' : ''}`}
-                style={{ height: b.rounds > 0 ? 8 + (b.rounds / maxBar) * 40 : 4 }}
-              />
+              <SplitBar rounds={b.rounds} gi={b.gi} rpe={b.rpe} height={b.rounds > 0 ? 8 + (b.rounds / maxBar) * 40 : 4} current />
               <div className="weekbar-day">{b.day}</div>
             </div>
           ))}
         </div>
+        <BarLegend />
       </section>
 
       <div className="stat-row">

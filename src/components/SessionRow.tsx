@@ -12,7 +12,7 @@ interface SessionRowProps {
 export function SessionRow({ session: s, expanded = false, onClick }: SessionRowProps) {
   return (
     <button
-      className={`card srow${expanded ? ' srow--open' : ''}`}
+      className={`card srow${expanded ? ' srow--open' : ''}${s.intensity !== null ? ` srow--rpe${s.intensity}` : ''}`}
       onClick={onClick}
       aria-expanded={expanded}
     >
