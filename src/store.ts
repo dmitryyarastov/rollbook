@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isValidRank } from './belts'
+import { canonicalTag, canonicalTags } from './curriculum'
 import type { AppData } from './types'
 
 const STORAGE_KEY = 'rollbook:v1'
@@ -14,7 +15,7 @@ export const DEFAULT_TAGS = [
   'Leg locks',
   'Sweeps',
   'Passing',
-  'Over-Under Pass',
+  'Over-under pass',
   'Darce',
   'Mount attacks',
   'Back takes',
@@ -36,6 +37,9 @@ export function emptyData(): AppData {
 /** A typed-round count from a stored blob: an integer 0–1000, else 0 (pre-format rows, junk). */
 const roundCount = (v: unknown): number =>
   typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 1000 ? v : 0
+
+/** A list with at least one member, else null — an empty (or all-junk) tagList falls back to the defaults. */
+const nonEmpty = (list: string[]): string[] | null => (list.length > 0 ? list : null)
 
 /** Exported for tests; the app itself only reaches it through useAppData. */
 export function load(): AppData {
@@ -68,6 +72,7 @@ export function load(): AppData {
           s.intensity === 1 || s.intensity === 2 || s.intensity === 3 || s.intensity === 4 || s.intensity === 5
             ? s.intensity
             : null,
+        tags: canonicalTags(Array.isArray(s.tags) ? s.tags : []),
         time: typeof s.time === 'string' ? s.time : null,
       })),
       // Blobs from before the competitions feature simply gain the empty array;
@@ -75,7 +80,7 @@ export function load(): AppData {
       competitions: (Array.isArray(parsed.competitions) ? parsed.competitions : base.competitions).map((c) => ({
         ...c,
         placement: c.placement === 'bronze' || c.placement === 'silver' || c.placement === 'gold' ? c.placement : 'none',
-        tags: Array.isArray(c.tags) ? c.tags : [],
+        tags: canonicalTags(Array.isArray(c.tags) ? c.tags : []),
       })),
       // Blobs from before belts gain the empty array; malformed events are dropped.
       promotions: (Array.isArray(parsed.promotions) ? parsed.promotions : base.promotions).filter(
@@ -87,8 +92,14 @@ export function load(): AppData {
           typeof p.updatedAt === 'number' &&
           isValidRank(p),
       ),
-      tagList: Array.isArray(parsed.tagList) && parsed.tagList.length > 0 ? parsed.tagList : base.tagList,
-      focus: { ...base.focus, ...parsed.focus },
+      // Spellings fold to their canonical names and duplicates collapse (first
+      // position kept) — a read-side normalization, not a stamped edit, so
+      // stateUpdatedAt is untouched; the list stays append-only in input order.
+      tagList: nonEmpty(Array.isArray(parsed.tagList) ? canonicalTags(parsed.tagList) : []) ?? base.tagList,
+      focus: {
+        title: typeof parsed.focus?.title === 'string' ? parsed.focus.title : base.focus.title,
+        tag: typeof parsed.focus?.tag === 'string' ? canonicalTag(parsed.focus.tag) : base.focus.tag,
+      },
       settings: {
         ...base.settings,
         ...parsed.settings,

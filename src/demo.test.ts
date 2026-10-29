@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { canonicalTag } from './curriculum'
 import { demoData } from './demo'
 import {
   focusProgress,
@@ -15,6 +16,11 @@ const TODAY = '2026-08-02' // Sunday — every showcase session exists
 describe('demo seed (through the real stats functions)', () => {
   const data = demoData(TODAY)
   const { sessions } = data
+
+  it('seeds only canonical tag spellings — the seed bypasses load(), so nothing folds it', () => {
+    const tags = new Set([...sessions.flatMap((s) => s.tags), ...data.competitions.flatMap((c) => c.tags), ...data.tagList, data.focus.tag])
+    for (const t of tags) expect(canonicalTag(t), t).toBe(t)
+  })
 
   it('never creates future or prior-year sessions', () => {
     expect(sessions.every((s) => s.date <= TODAY && s.date >= '2026-01-01')).toBe(true)

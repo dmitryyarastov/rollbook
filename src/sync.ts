@@ -9,6 +9,7 @@
  * Pulls merge last-write-wins by updatedAt and never delete local rows.
  */
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SYNC_USER_ID } from './config'
+import { canonicalTag, canonicalTags } from './curriculum'
 import { emptyData } from './store'
 import { isValidRank } from './belts'
 import { specBreakdownSum } from './specific'
@@ -144,7 +145,8 @@ export function fromRow(r: unknown): Session | null {
     roundMin,
     durationMin: wholeBetween(o.duration_min, 1, 600),
     intensity: (SESSION_INTENSITIES.includes(Number(o.intensity)) ? Number(o.intensity) : null) as SessionIntensity | null,
-    tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string') : [],
+    // String members only, folded to canonical spellings (src/curriculum.ts) and deduplicated.
+    tags: canonicalTags(Array.isArray(o.tags) ? o.tags : []),
     time: typeof o.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.time) ? o.time : null,
   }
 }
@@ -229,7 +231,7 @@ export function fromCompRow(r: unknown): Competition | null {
     workedWell: typeof o.worked_well === 'string' ? o.worked_well : '',
     didntWork: typeof o.didnt_work === 'string' ? o.didnt_work : '',
     matches: sanitizeMatches(o.matches),
-    tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === 'string') : [],
+    tags: canonicalTags(Array.isArray(o.tags) ? o.tags : []),
   }
 }
 
@@ -274,6 +276,8 @@ export function fromPromoRow(r: unknown): Promotion | null {
   return { id: o.id, date: o.date, createdAt, updatedAt, belt: rank.belt, stripes: rank.stripes }
 }
 
+const folded = (list: string[]): string[] | null => (list.length > 0 ? list : null)
+
 export function fromStateRow(r: unknown): RemoteState | null {
   if (typeof r !== 'object' || r === null) return null
   const o = r as Record<string, unknown>
@@ -286,12 +290,12 @@ export function fromStateRow(r: unknown): RemoteState | null {
   return {
     focus: {
       title: typeof focus.title === 'string' ? focus.title : base.focus.title,
-      tag: typeof focus.tag === 'string' ? focus.tag : base.focus.tag,
+      tag: typeof focus.tag === 'string' ? canonicalTag(focus.tag) : base.focus.tag,
     },
-    tagList:
-      Array.isArray(s.tagList) && s.tagList.length > 0
-        ? s.tagList.filter((t): t is string => typeof t === 'string')
-        : base.tagList,
+    // Canonical spellings, duplicates collapsed — the same fold as store.load,
+    // so a stale device's old spelling can never resurrect a renamed tag. A
+    // list with nothing left after the fold counts as empty: defaults.
+    tagList: folded(Array.isArray(s.tagList) ? canonicalTags(s.tagList) : []) ?? base.tagList,
     settings: {
       // Clamped to a positive integer: a tampered 0/negative goal would make
       // every empty week "qualify" and stall the streak walks.

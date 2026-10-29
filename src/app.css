@@ -1071,6 +1071,16 @@
   color: var(--color-neutral-600);
   margin-bottom: 8px;
 }
+/* A sub-group inside a branch block: a plain small label one register below the group's caps. */
+.cloud-sub {
+  margin-top: 10px;
+}
+.cloud-sub-label {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-neutral-500);
+  margin-bottom: 6px;
+}
 
 /* ── Techniques: skill tree ── */
 
@@ -1188,6 +1198,16 @@
   .tree-row:not(.tree-row--sel):not(.tree-row--focus):hover .tree-row-label {
     color: var(--color-neutral-400);
   }
+}
+/* Sub-group rows: a collapsible head in the tag-row grammar (caret, 500-weight label, "explored / total"),
+   its leaves nested under a 1px guide line. */
+.tree-row--sub .tree-row-label {
+  font-weight: 500;
+}
+.tree-sub-rows {
+  margin: 0 0 4px 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-neutral-800);
 }
 .tree-detail {
   margin: 2px 0 8px;

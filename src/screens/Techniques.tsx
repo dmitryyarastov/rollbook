@@ -26,6 +26,16 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
     }
   }, [data.sessions, data.competitions, data.tagList, todayIso])
 
+  const cloud = (tags: string[]) => (
+    <div className="tag-cloud">
+      {tags.map((t) => (
+        <div key={t} className="tagstat">
+          {t} <span className="tagstat-n">{byName.get(t) ?? 0}</span>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div className="screen">
       <h1 className="screen-title">Techniques</h1>
@@ -72,13 +82,13 @@ export function Techniques({ data, todayIso, onChangeFocus }: TechniquesProps) {
       {sections.map((sec) => (
         <div key={sec.group} className="cloud-group">
           <div className="cloud-group-label">{sec.label}</div>
-          <div className="tag-cloud">
-            {sec.tags.map((t) => (
-              <div key={t} className="tagstat">
-                {t} <span className="tagstat-n">{byName.get(t) ?? 0}</span>
-              </div>
-            ))}
-          </div>
+          {sec.tags.length > 0 && cloud(sec.tags)}
+          {sec.subsections.map((sub) => (
+            <div key={sub.subgroup} className="cloud-sub">
+              <div className="cloud-sub-label">{sub.label}</div>
+              {cloud(sub.tags)}
+            </div>
+          ))}
         </div>
       ))}
     </div>

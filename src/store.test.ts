@@ -43,6 +43,42 @@ const comp = {
 }
 
 describe('load', () => {
+  it('folds session, competition, list and focus tags to their canonical spellings (2026-10-28 rename)', () => {
+    stubStorage(
+      JSON.stringify({
+        sessions: [{ ...session, tags: ['Closed Guard', 'SLX', 'Single leg X', 'Kimura', 7, ''] }],
+        competitions: [{ ...comp, tags: ['2on1 from closed guard', 'Over-Under Pass'] }],
+        tagList: ['Half guard', 'Over-Under Pass', 'SLX', 'Pendulum', 'single leg x', 'Roll through defense'],
+        focus: { title: 'Open Guard', tag: 'SLX' },
+        stateUpdatedAt: 1234,
+      }),
+    )
+    const d = load()
+    expect(d.sessions[0].tags).toEqual(['Closed guard', 'Single leg X', 'Kimura'])
+    expect(d.competitions[0].tags).toEqual(['2-on-1 from closed guard', 'Over-under pass'])
+    // duplicates collapse keeping the first position; input order otherwise untouched
+    expect(d.tagList).toEqual(['Half guard', 'Over-under pass', 'Single leg X', 'Pendulum sweep', 'Roll through defense'])
+    expect(d.focus).toEqual({ title: 'Open Guard', tag: 'Single leg X' })
+    // folding is a read-side normalization, never a stamped edit
+    expect(d.stateUpdatedAt).toBe(1234)
+  })
+
+  it('a tagList with nothing left after the fold falls back to the defaults, like an empty one', () => {
+    stubStorage(JSON.stringify({ tagList: [7, '', '   ', null] }))
+    expect(load().tagList).toEqual(emptyData().tagList)
+    stubStorage(JSON.stringify({ tagList: [] }))
+    expect(load().tagList).toEqual(emptyData().tagList)
+  })
+
+  it('heals a junk focus to the defaults and junk session tags to []', () => {
+    stubStorage(JSON.stringify({ sessions: [{ ...session, tags: 'junk' }], focus: 42 }))
+    const d = load()
+    expect(d.sessions[0].tags).toEqual([])
+    expect(d.focus).toEqual({ title: '', tag: '' })
+    stubStorage(JSON.stringify({ focus: { title: 7, tag: ['x'] } }))
+    expect(load().focus).toEqual({ title: '', tag: '' })
+  })
+
   it('defaults competitions to [] for blobs from before the feature', () => {
     stubStorage(JSON.stringify({ sessions: [session], tagList: ['Kimura'] }))
     const d = load()

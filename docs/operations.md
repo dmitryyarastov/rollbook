@@ -193,10 +193,84 @@ where user_id = 'dmitrii' and id in ('<id-1>', '<id-2>') and 'Arm drag' = any(ta
 returning date, updated_at, array_length(tags, 1);
 ```
 
+**The 2026-10-28 tag rename — an optional tidy, not a migration.** The rename
+(`Closed Guard` → `Closed guard`, `SLX` → `Single leg X`, `2on1 from closed guard` →
+`2-on-1 from closed guard`, `Pendulum` → `Pendulum sweep`, and the sentence-case
+fixes — [curriculum.md](curriculum.md)) ships as folding inside the app: `load()`, the
+pull sanitizers and the save paths rewrite every spelling to its canonical name, so the
+app behaves identically whether or not the database rows still say `Closed Guard`
+([sync.md](sync.md) reasons it through last-write-wins). Rows get rewritten remotely
+on the next push from a device running the new build. The statements below only
+accelerate that for database hygiene (the training-hub replica read shows raw tag
+strings); they are owner-approved, run through MCP `execute_sql` with owner
+privileges, and may run **before or after** the deploy. They bump `updated_at`, so
+every device adopts the rewritten rows on its next pull — identical to the rows it
+already folded itself — and for `sessions`/`competitions` the push race above can at
+worst revert a spelling that the next pull folds again. **The `app_state` statement is
+the usual one-blob-one-clock hazard, not a tag question**: its `now()` stamp is newer
+than every device's `stateUpdatedAt`, so a device holding an unpushed focus/tag edit
+would adopt the blob and lose that edit — run it right after the phone has synced (check
+the remote `updated_at` first, as Workflow 2 says), or skip it: the app folds the list
+anyway. Verify the audit query afterwards: every spelling should be canonical.
+
+```sql
+-- sessions and competitions: one array_replace per renamed spelling, only rows that carry one
+with renames(old, new) as (values
+  ('Closed Guard', 'Closed guard'), ('Side Control', 'Side control'),
+  ('Over-Under Pass', 'Over-under pass'), ('Double Under Pass', 'Double under pass'),
+  ('Smash Pass', 'Smash pass'), ('Opening Closed Guard', 'Opening closed guard'),
+  ('Top Lock', 'Top lock'), ('Side Scissors', 'Side scissors'), ('Half Butterfly', 'Half butterfly'),
+  ('Spider Guard', 'Spider guard'), ('Tomoe Nage', 'Tomoe nage'), ('Yoko Tomoe Nage', 'Yoko tomoe nage'),
+  ('SLX', 'Single leg X'), ('2on1 from closed guard', '2-on-1 from closed guard'), ('Pendulum', 'Pendulum sweep'))
+update public.sessions s
+set tags = (select array_agg(coalesce(r.new, t.tag) order by t.ord)
+            from unnest(s.tags) with ordinality as t(tag, ord) left join renames r on r.old = t.tag),
+    updated_at = now()
+where s.user_id = 'dmitrii' and s.id not like 'demo-%' and s.tags && (select array_agg(old) from renames)
+returning s.date, s.tags;
+
+-- the same for competitions
+with renames(old, new) as (values
+  ('Closed Guard', 'Closed guard'), ('Side Control', 'Side control'),
+  ('Over-Under Pass', 'Over-under pass'), ('Double Under Pass', 'Double under pass'),
+  ('Smash Pass', 'Smash pass'), ('Opening Closed Guard', 'Opening closed guard'),
+  ('Top Lock', 'Top lock'), ('Side Scissors', 'Side scissors'), ('Half Butterfly', 'Half butterfly'),
+  ('Spider Guard', 'Spider guard'), ('Tomoe Nage', 'Tomoe nage'), ('Yoko Tomoe Nage', 'Yoko tomoe nage'),
+  ('SLX', 'Single leg X'), ('2on1 from closed guard', '2-on-1 from closed guard'), ('Pendulum', 'Pendulum sweep'))
+update public.competitions c
+set tags = (select array_agg(coalesce(r.new, t.tag) order by t.ord)
+            from unnest(c.tags) with ordinality as t(tag, ord) left join renames r on r.old = t.tag),
+    updated_at = now()
+where c.user_id = 'dmitrii' and c.id not like 'demo-%' and c.tags && (select array_agg(old) from renames)
+returning c.date, c.tags;
+
+-- app_state: rewrite tagList in place (order kept; the app also folds and dedupes) and the focus tag.
+-- Check the remote updated_at first (Workflow 2): this makes every device adopt the whole blob.
+with renames(old, new) as (values
+  ('Closed Guard', 'Closed guard'), ('Side Control', 'Side control'),
+  ('Over-Under Pass', 'Over-under pass'), ('Double Under Pass', 'Double under pass'),
+  ('Smash Pass', 'Smash pass'), ('Opening Closed Guard', 'Opening closed guard'),
+  ('Top Lock', 'Top lock'), ('Side Scissors', 'Side scissors'), ('Half Butterfly', 'Half butterfly'),
+  ('Spider Guard', 'Spider guard'), ('Tomoe Nage', 'Tomoe nage'), ('Yoko Tomoe Nage', 'Yoko tomoe nage'),
+  ('SLX', 'Single leg X'), ('2on1 from closed guard', '2-on-1 from closed guard'), ('Pendulum', 'Pendulum sweep'))
+-- jsonb_set is STRICT: a NULL new value would null the WHOLE blob, so both values are coalesced.
+update public.app_state a
+set state = jsonb_set(
+      jsonb_set(a.state, '{tagList}',
+        coalesce((select jsonb_agg(to_jsonb(coalesce(r.new, t.tag)) order by t.ord)
+                  from jsonb_array_elements_text(a.state->'tagList') with ordinality as t(tag, ord)
+                  left join renames r on r.old = t.tag), '[]'::jsonb)),
+      '{focus,tag}', to_jsonb(coalesce((select new from renames where old = a.state->'focus'->>'tag'), a.state->'focus'->>'tag', ''))),
+    updated_at = now()
+where a.user_id = 'dmitrii'
+returning a.state->'tagList', a.state->'focus', a.updated_at;
+```
+
 ### Workflow 3 — inspection and audits
 
-- **Live tag audit** — every tag in real use should land in a real curriculum group
-  ([curriculum.md](curriculum.md)); run this after new tags appear:
+- **Live tag audit** — every tag in real use should land in a real branch of the game
+  map and be spelled canonically ([curriculum.md](curriculum.md) — the skill tree's Other
+  branch shows the same thing in-app); run this after new tags appear:
 
   ```sql
   select distinct t as tag from (

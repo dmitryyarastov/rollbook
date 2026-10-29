@@ -146,6 +146,23 @@ describe('row mapping', () => {
     expect(s!.tags).toEqual(['ok', 'also ok'])
   })
 
+  it('folds pulled tags to their canonical spellings and collapses duplicates (2026-10-28 rename)', () => {
+    // a stale device's old spelling can never resurrect a renamed tag — pull re-folds it
+    const s = fromRow({ ...toRow(mk()), tags: ['Closed Guard', 'SLX', 'Single leg X', 'kimura', ''] })
+    expect(s!.tags).toEqual(['Closed guard', 'Single leg X', 'Kimura'])
+    const c = fromCompRow({ ...toCompRow(mkComp()), tags: ['2on1 from closed guard', 'Pendulum'] })
+    expect(c!.tags).toEqual(['2-on-1 from closed guard', 'Pendulum sweep'])
+    const st = fromStateRow({
+      state: { focus: { title: 'Open Guard', tag: 'SLX' }, tagList: ['Over-Under Pass', 'SLX', 'single leg x', 7], settings: {} },
+      updated_at: '2026-08-04T10:00:00Z',
+    })
+    expect(st!.focus).toEqual({ title: 'Open Guard', tag: 'Single leg X' })
+    expect(st!.tagList).toEqual(['Over-under pass', 'Single leg X'])
+    // nothing left after the fold counts as an empty list: the defaults, as for []
+    const junk = fromStateRow({ state: { tagList: [7, '', null], settings: {} }, updated_at: '2026-08-04T10:00:00Z' })
+    expect(junk!.tagList).toEqual(emptyData().tagList)
+  })
+
   it('round-trips specific rounds and clamps tampered values', () => {
     const typed = mk({ specific: 6, specClosed: 1, specMount: 1, specOpen: 1, specSide: 1, specBack: 1, specTurtle: 1 })
     expect(fromRow(toRow(typed))).toEqual(typed)

@@ -16,8 +16,8 @@ a system:
 | [docs/data-model.md](docs/data-model.md) | types, localStorage shape, load()/defaulting migration idiom, demo seed |
 | [docs/sync.md](docs/sync.md) | the whole sync protocol + the playbook for adding synced fields/entities |
 | [docs/stats.md](docs/stats.md) | every derived stat's exact semantics |
-| [docs/curriculum.md](docs/curriculum.md) | Gracie Barra tag ordering: research, mapping, judgment calls |
-| [docs/skill-tree.md](docs/skill-tree.md) | the skill tree: branches from the curriculum groups, leaves from the tags, progress from the log; owner rulings |
+| [docs/curriculum.md](docs/curriculum.md) | the tag vocabulary: canonical names + aliases (the fold at the boundaries), the owner's two-level hierarchy, ordering, judgment calls and rulings |
+| [docs/skill-tree.md](docs/skill-tree.md) | the skill tree: branches and sub-groups from the curriculum hierarchy, leaves from the tags, progress from the log; owner rulings |
 | [docs/design-system.md](docs/design-system.md) | Nocturne rules, tokens, component/CSS conventions |
 | [docs/build-pwa.md](docs/build-pwa.md) | vite, service worker strategy, precache injection, deploy |
 | [docs/testing.md](docs/testing.md) | suites, factories, what to update when changing X |
@@ -137,9 +137,18 @@ with `--mode nosync` for any click-through.
   double counting (one flat 25 XP per session per attribute). Legacy rows
   keep an untyped `specific` total with a zero breakdown.
 - Tag ordering is display-time only; the persisted `tagList` is append-only
-  master data. The GB curriculum mapping has three documented judgment calls
-  (Escapes→side control, Half guard→guard, Darce→back & turtle) pinned by
-  tests — don't "fix" them casually.
+  master data. Tag **spellings** are canonical (`src/curriculum.ts — TAG_DEFS`:
+  one name per technique plus aliases) and get folded at the boundaries —
+  `store.load()`, the pull sanitizers, the save paths — never migrated in
+  place; a rename is a `name` change with the old spelling kept as an alias
+  (the 2026-10-28 rename normalized his live tags that way: Closed Guard →
+  Closed guard, SLX → Single leg X, …). The hierarchy is the owner's own game
+  map since 2026-10-28 (Standing & takedowns · Guard · Guard passing · Top
+  control · Escapes · Leg locks, with sub-groups where his tags cluster), not
+  the Gracie Barra groups it replaced; it has three documented judgment calls
+  (Escapes → the Escapes branch, Half guard → Guard › Half guard, Darce → Top
+  control › Back & turtle) and a list of owner rulings pinned by tests —
+  don't "fix" them casually.
 - The six characteristics in `src/xp.ts` (passing, guard retention,
   takedowns-gi, wrestling-nogi, leg locks, top control — labelled "Top
   control / Pinning") are the owner's chosen **lifelong attribute set** — the
@@ -169,13 +178,15 @@ with `--mode nosync` for any click-through.
 - No settings UI exists **by design** (per the handoff); `weeklyGoal` and
   `showMilestones` are storage-only knobs.
 - **The skill tree stores nothing and keeps no tree data in code** (October
-  2026, Techniques → Skill tree): branches are the curriculum position groups,
-  leaves are the tags themselves (every list or session-borne tag, dim until
-  trained), progress
+  2026, Techniques → Skill tree): branches are the curriculum branches,
+  sub-groups the curriculum sub-groups, leaves are the tags themselves (every
+  list or session-borne tag, dim until trained), progress
   is the characteristic scale (25/60 flat grants, 50/25 curve) derived in
-  `src/tree.ts`; typed swap rounds light position branches (`SPEC_GROUPS`).
-  The owner rejected importing his curated RPGreal tree — don't re-propose a
-  hand-built hierarchy; a tag joins the right branch through `TAG_GROUP`.
+  `src/tree.ts`; typed swap rounds light positions — the sub-group, its branch
+  and the other role's branch (`SPEC_GROUPS`; pin rounds light Escapes in the
+  tree but feed no attribute). The owner rejected importing his curated
+  RPGreal tree — don't re-propose a hand-built node tree; a tag joins the
+  right node through its `TAG_DEFS` place.
   "Set as focus" on a leaf writes the weekly focus (see docs/skill-tree.md).
 - Perf posture: the app is deliberately simple — `useMemo` guards the
   per-keystroke/per-toggle paths; `React.memo` on rows was considered and

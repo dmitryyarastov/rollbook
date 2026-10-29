@@ -28,7 +28,7 @@ with [CLAUDE.md](CLAUDE.md) as the entry point and invariants digest.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # vitest — dates/stats/xp/belts/specific/curriculum/store/sync/demo suites
+npm test           # vitest — dates/stats/xp/tree/belts/specific/curriculum/store/sync/demo suites
 npm run build      # typecheck + production build + SW precache injection
 npm run preview    # serve the production build
 npm run icons      # regenerate public/icons PNGs from the SVG mark (sharp)
@@ -153,17 +153,22 @@ Settings `weeklyGoal` (default 2) and `showMilestones` are stored under the
 `rollbook:v1` localStorage key; there is deliberately no settings UI (per
 the handoff — they were tweakable props in the prototype).
 
-## Tag ordering (Gracie Barra curriculum)
+## Tag vocabulary and hierarchy
 
-Technique tags are ordered by Gracie Barra's position themes — Standing &
-takedowns → Guard → Guard passing → Side control → Mount & knee on belly →
-Back & turtle → Leg locks — everywhere they appear (Log chips, the focus-tag
-picker, and the Techniques tag cloud, which shows labelled groups). GB's
-16-week cycle rotates positions, and week numbers drift between cycle
-revisions, so the order follows the canonical theme sequence, not hard week
-numbers. The mapping lives in `src/curriculum.ts` (exact names,
-case-insensitive; unknown tags fall into a trailing "Other" group). This
-replaced the earlier most-used-first ordering.
+Technique tags hang from a two-level map of the game — Standing & takedowns →
+Guard → Guard passing → Top control → Escapes → Leg locks, with sub-groups
+where the tags cluster (Wrestling / Judo; Closed / Open / Half guard; Pressure /
+Dynamic passing / Opening closed guard; Side control / Mount & knee on belly /
+Back & turtle) — everywhere they appear: the Log chips and the focus-tag picker
+follow that order, the Techniques tag cloud shows the labelled branches and
+sub-groups, and the skill tree nests them with per-node progress. The owner's
+own game map (October 2026) replaced the Gracie Barra position-theme ordering
+the app started with. Every tag also has one canonical spelling with aliases
+(`Closed guard`, `Single leg X` for `SLX`, …): spellings are folded at the
+boundaries — when local data loads, on every pull, and on save — never by
+migrating stored rows. The vocabulary lives in `src/curriculum.ts` (exact
+names, case-insensitive; unknown tags keep their spelling and fall into a
+trailing "Other" group).
 
 ## Deviations from the handoff (deliberate)
 
@@ -230,7 +235,8 @@ src/
   xp.ts          XP formulas, levels, six lifelong characteristics (xp.test.ts)
   belts.ts       belt ladder + current rank from promotion events (belts.test.ts)
   specific.ts    the six 2+2 swap-round formats, one list (specific.test.ts)
-  curriculum.ts  Gracie Barra position groups + tag ordering
+  curriculum.ts  tag vocabulary: canonical names + aliases, the two-level hierarchy, ordering
+  tree.ts        the derived skill tree (branches › sub-groups › tags) (tree.test.ts)
   store.ts       localStorage persistence (rollbook:v1) + defaults
   sync.ts        Supabase PostgREST mapping/merge + IO (useSync.ts schedules)
   demo.ts        deterministic demo seed, anchored to "today"

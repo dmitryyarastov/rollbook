@@ -7,7 +7,7 @@ import { Log } from './screens/Log'
 import { Progress } from './screens/Progress'
 import { Sessions } from './screens/Sessions'
 import { Techniques } from './screens/Techniques'
-import { orderTagsByCurriculum } from './curriculum'
+import { canonicalTag, canonicalTags, orderTagsByCurriculum } from './curriculum'
 import { withSessionTags } from './stats'
 import { emptyData, uid, useAppData } from './store'
 import { specBreakdownSum } from './specific'
@@ -134,7 +134,7 @@ export default function App() {
       roundMin: form.roundMin,
       durationMin: form.durationMin,
       intensity: form.intensity,
-      tags: form.tags,
+      tags: canonicalTags(form.tags),
       time: toHhmm(start),
     }
     update((d) => ({ ...d, sessions: [...d.sessions, session] }))
@@ -173,7 +173,7 @@ export default function App() {
       workedWell: compForm.workedWell.trim(),
       didntWork: compForm.didntWork.trim(),
       matches: compForm.matches.map((m) => ({ ...m, submission: m.submission.trim() })),
-      tags: compForm.tags,
+      tags: canonicalTags(compForm.tags),
     }
     update((d) => ({ ...d, competitions: [...d.competitions, comp] }))
     setCompForm((f) => ({ ...EMPTY_COMP_FORM, gi: f.gi }))
@@ -181,12 +181,15 @@ export default function App() {
     requestPush()
   }
 
+  // A new name enters in its canonical spelling (an alias of a known tag folds
+  // into that tag, so "slx" never becomes a second leaf beside Single leg X).
   const addTag = (name: string) => {
+    const tag = canonicalTag(name)
     const stamp = Date.now()
     update((d) =>
-      d.tagList.some((t) => t.toLowerCase() === name.toLowerCase())
+      tag === '' || d.tagList.some((t) => t.toLowerCase() === tag.toLowerCase())
         ? d
-        : { ...d, tagList: [...d.tagList, name], stateUpdatedAt: stamp },
+        : { ...d, tagList: [...d.tagList, tag], stateUpdatedAt: stamp },
     )
     requestPush()
   }

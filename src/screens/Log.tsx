@@ -1,5 +1,6 @@
 import { X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
+import { canonicalTag } from '../curriculum'
 import { autoTitle, fmtTime, resolveWhen, toIso } from '../dates'
 import { Chip } from '../components/Chip'
 import { Stepper } from '../components/Stepper'
@@ -62,7 +63,8 @@ export function Log({
   const commitTag = () => {
     if (committed.current) return
     committed.current = true
-    const name = newTag.trim()
+    // Fold to the canonical spelling first, so an alias ("slx") lands on the existing tag.
+    const name = canonicalTag(newTag)
     setAdding(false)
     setNewTag('')
     if (!name) return

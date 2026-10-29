@@ -1,372 +1,364 @@
 /**
- * Technique-tag ordering by the Gracie Barra curriculum. GB teaches a
- * worldwide 16-week rotating cycle organized by position themes; week
- * numbers drift between cycle revisions, so ordering follows the canonical
- * theme sequence (standing → guard → passing → pins → back → leg locks),
- * never hard week numbers. Display-time only — the persisted tagList stays
- * append-only master data.
+ * The technique-tag vocabulary: canonical spellings, the aliases that fold
+ * into them, and the two-level hierarchy every tag hangs from. The top level
+ * is the owner's own map of the game (2026-10-28, replacing the Gracie Barra
+ * position groups the module started with): Standing & takedowns → Guard →
+ * Guard passing → Top control → Escapes → Leg locks, with Other trailing for
+ * unmapped tags. Sub-groups sit under a branch only where his tags cluster;
+ * a tag without one hangs directly from its branch.
+ *
+ * Two jobs, both pure: display-time ordering (the persisted tagList stays
+ * append-only master data in input order) and canonicalization — a pure,
+ * idempotent fold of spelling variants into one name, applied where data
+ * enters the app (store.load, the pull sanitizers, the save paths), never
+ * as a stored migration. Exact-name lookup only, no keyword heuristics:
+ * "unknown → Other, in input order, spelled as typed" is the only behavior a
+ * user can predict, and the vocabulary is cheap to extend.
  */
 
-export type CurriculumGroupId =
-  | 'standing'
-  | 'guard'
-  | 'passing'
-  | 'side'
-  | 'mount'
-  | 'back'
-  | 'legs'
-  | 'other'
+export type CurriculumGroupId = 'standing' | 'guard' | 'passing' | 'top' | 'escapes' | 'legs' | 'other'
+
+export type CurriculumSubgroupId =
+  | 'wrestling'
+  | 'judo'
+  | 'closed-guard'
+  | 'open-guard'
+  | 'half-guard'
+  | 'pressure-passing'
+  | 'dynamic-passing'
+  | 'opening-closed-guard'
+  | 'side-control'
+  | 'mount-kob'
+  | 'back-turtle'
 
 export interface CurriculumGroup {
   id: CurriculumGroupId
   label: string
 }
 
+export interface CurriculumSubgroup {
+  id: CurriculumSubgroupId
+  group: CurriculumGroupId
+  label: string
+}
+
+/** The branches, in display order — the owner's game map (2026-10-28). */
 export const CURRICULUM_GROUPS: CurriculumGroup[] = [
   { id: 'standing', label: 'Standing & takedowns' },
   { id: 'guard', label: 'Guard' },
   { id: 'passing', label: 'Guard passing' },
-  { id: 'side', label: 'Side control' },
-  { id: 'mount', label: 'Mount & knee on belly' },
-  { id: 'back', label: 'Back & turtle' },
+  { id: 'top', label: 'Top control' },
+  { id: 'escapes', label: 'Escapes' },
   { id: 'legs', label: 'Leg locks' },
   { id: 'other', label: 'Other' },
 ]
 
+/** The sub-groups, in display order within their branch. Other, Escapes and Leg locks are flat. */
+export const CURRICULUM_SUBGROUPS: CurriculumSubgroup[] = [
+  { id: 'wrestling', group: 'standing', label: 'Wrestling' },
+  { id: 'judo', group: 'standing', label: 'Judo' },
+  { id: 'closed-guard', group: 'guard', label: 'Closed guard' },
+  { id: 'open-guard', group: 'guard', label: 'Open guard' },
+  { id: 'half-guard', group: 'guard', label: 'Half guard' },
+  { id: 'pressure-passing', group: 'passing', label: 'Pressure passing' },
+  { id: 'dynamic-passing', group: 'passing', label: 'Dynamic passing' },
+  { id: 'opening-closed-guard', group: 'passing', label: 'Opening closed guard' },
+  { id: 'side-control', group: 'top', label: 'Side control' },
+  { id: 'mount-kob', group: 'top', label: 'Mount & knee on belly' },
+  { id: 'back-turtle', group: 'top', label: 'Back & turtle' },
+]
+
+/** Where a mapped tag hangs: directly from a branch, or in one of its sub-groups. */
+export type CurriculumPlace = Exclude<CurriculumGroupId, 'other'> | CurriculumSubgroupId
+
+export interface TagDef {
+  /** The canonical spelling — what the app stores and shows. */
+  name: string
+  place: CurriculumPlace
+  /** Other spellings that fold into `name` (matched trimmed + lowercased). */
+  aliases?: readonly string[]
+}
+
+const t = (name: string, place: CurriculumPlace, aliases?: readonly string[]): TagDef =>
+  aliases ? { name, place, aliases } : { name, place }
+
 /**
- * Exact-name lookup, case-insensitive (keys pre-lowercased). Deliberately no
- * keyword heuristics — "unknown → Other, in input order" is the only behavior
- * a user can predict, and the map is cheap to extend. Judgment calls, flagged:
- * generic "Escapes" files under Side control (GB's pin-escape rotation starts
- * there); "Half guard" under Guard (practical usage; GB1 technically teaches
- * it as side-control recovery); Darce/anaconda/guillotine under Back & turtle
- * (front-headlock family, turtle-adjacent).
+ * The vocabulary. Canonical names are sentence case (proper nouns keep their
+ * capitals: De La Riva, DLR X); the owner's live tags were normalized on
+ * 2026-10-28 (Closed Guard → Closed guard, SLX → Single leg X, 2on1 from
+ * closed guard → 2-on-1 from closed guard, Pendulum → Pendulum sweep, …) and
+ * every old spelling stays an alias so stored rows, the focus tag and the
+ * whitelists keep resolving. Owner rulings are flagged inline; the rest is
+ * the 2026-10 vocabulary harvest (GB curriculum pages + BJJ glossaries, see
+ * docs/curriculum.md), re-homed into his branches. Exported for the
+ * vocabulary tests only — the app reads it through the functions below.
  */
-const TAG_GROUP: Record<string, CurriculumGroupId> = {
+export const TAG_DEFS: readonly TagDef[] = [
   // ── Standing & takedowns ──
-  'takedowns': 'standing',
-  'wrestling': 'standing',
-  'judo': 'standing',
-  'single leg': 'standing',
-  'single-leg': 'standing',
-  'single leg takedown': 'standing', // live tag — it sat in Other until the owner moved it to Standing (2026-10-27)
-  'single-leg takedown': 'standing',
-  // Owner ruling 2026-10-27: the cow catcher is standing work for him (a
-  // front-headlock entry off the feet), not a back/turtle theme — moved from
-  // 'back' (the 2026-10-16 research placement). Still in TOP_CONTROL_TAGS
+  t('Takedowns', 'standing'),
+  t('Guard pull', 'standing'),
+  t('Grip fighting', 'standing'),
+  t('Technical stand up', 'standing', ['technical standup', 'technical get up']),
+  // Wrestling
+  t('Wrestling', 'wrestling'),
+  // Live tag — sat in Other until the owner moved it to Standing (2026-10-27).
+  t('Single leg takedown', 'wrestling', ['single leg', 'single-leg', 'single-leg takedown']),
+  t('Double leg takedown', 'wrestling', ['double leg', 'double-leg', 'double-leg takedown']),
+  t('Ankle pick', 'wrestling'),
+  // The standing arm drag; the closed-guard one is its own tag (owner ruling, 2026-10-16).
+  t('Arm drag', 'wrestling'),
+  t('Snapdown', 'wrestling'),
+  t('Blast double', 'wrestling', ['blast double leg']),
+  t('High crotch', 'wrestling', ['high-crotch']),
+  t('Duck under', 'wrestling', ['duckunder', 'duck-under']),
+  t("Fireman's carry", 'wrestling', ['firemans carry']),
+  t('Knee tap', 'wrestling'),
+  t('Knee pick', 'wrestling'),
+  t('Inside trip', 'wrestling'),
+  t('Outside trip', 'wrestling'),
+  t('Collar tie', 'wrestling', ['collar-tie']),
+  t('Underhook', 'wrestling', ['underhooks']), // ambiguous (also half-guard bottom); standing dominates as a bare tag
+  t('Whizzer', 'wrestling'),
+  t('Overhook', 'wrestling'),
+  t('Sprawl', 'wrestling'),
+  t('Body lock takedown', 'wrestling'),
+  t('Slide by', 'wrestling'), // no-gi standing technique (owner ruling, 2026-10)
+  // Owner ruling 2026-10-27: a front-headlock entry off the feet, so standing
+  // work for him (moved from Back & turtle). Still in TOP_CONTROL_TAGS
   // (src/xp.ts), so it feeds Top control AND the gi-split standing attributes.
-  'cow catcher': 'standing',
-  'double leg': 'standing',
-  'double-leg': 'standing',
-  'double leg takedown': 'standing',
-  'double-leg takedown': 'standing',
-  'ankle pick': 'standing',
-  'arm drag': 'standing',
-  'snapdown': 'standing',
-  'osoto gari': 'standing',
-  'seoi nage': 'standing',
-  'uchi mata': 'standing',
-  'o goshi': 'standing',
-  'hip throw': 'standing',
-  'foot sweep': 'standing',
-  'guard pull': 'standing',
-  'grip fighting': 'standing',
-  'body lock takedown': 'standing',
-  'slide by': 'standing', // no-gi standing technique (owner ruling)
-  // 2026-10 vocabulary harvest (GB curriculum + BJJ glossaries; see docs/curriculum.md)
-  'blast double': 'standing',
-  'blast double leg': 'standing',
-  'high crotch': 'standing',
-  'high-crotch': 'standing',
-  'duck under': 'standing',
-  'duckunder': 'standing',
-  'duck-under': 'standing',
-  "fireman's carry": 'standing',
-  'firemans carry': 'standing',
-  'kata guruma': 'standing',
-  'knee tap': 'standing',
-  'knee pick': 'standing',
-  'inside trip': 'standing',
-  'ouchi gari': 'standing',
-  'kouchi gari': 'standing',
-  'outside trip': 'standing',
-  'kosoto gake': 'standing',
-  'kosoto gari': 'standing',
-  'harai goshi': 'standing',
-  'harai-goshi': 'standing',
-  'tomoe nage': 'standing',
-  'yoko tomoe nage': 'standing', // side variant of tomoe nage — live tag, 2026-10
-  'collar tie': 'standing',
-  'collar-tie': 'standing',
-  'underhook': 'standing', // ambiguous (also half-guard bottom); standing dominates as a bare tag
-  'underhooks': 'standing',
-  'whizzer': 'standing',
-  'overhook': 'standing',
-  'sprawl': 'standing',
-  'technical stand up': 'standing',
-  'technical standup': 'standing',
-  'technical get up': 'standing',
-  // ── Guard (bottom) ──
-  'closed guard': 'guard',
-  'open guard': 'guard',
-  'half guard': 'guard',
-  'deep half': 'guard',
-  'half butterfly': 'guard', // a half-guard variant, NOT open guard (owner ruling, 2026-10-16)
-  'guard retention': 'guard',
-  'sweeps': 'guard',
-  'de la riva': 'guard',
-  'dlr': 'guard',
-  'dlr x': 'guard',
-  'x-guard': 'guard',
-  'x guard': 'guard',
-  'butterfly': 'guard',
-  'butterfly guard': 'guard',
-  'spider': 'guard',
-  'spider guard': 'guard',
-  'lasso': 'guard',
-  'slx': 'guard', // single leg X — an open guard (owner ruling, 2026-10)
-  'single leg x': 'guard',
-  'top lock': 'guard', // a closed-guard variant despite the name — NOT top control (owner ruling)
-  'side scissors': 'guard', // closed-guard improved position (owner ruling)
-  '2on1 from closed guard': 'guard', // the closed-guard arm drag — distinct from standing 'arm drag' (owner ruling)
-  '2 on 1 from closed guard': 'guard',
-  '2-on-1 from closed guard': 'guard',
-  'pendulum': 'guard',
-  'kimura': 'guard',
-  'armbar': 'guard',
-  'triangle': 'guard',
-  'omoplata': 'guard',
-  'hip bump': 'guard',
-  'scissor sweep': 'guard',
-  'flower sweep': 'guard',
-  'pendulum sweep': 'guard',
-  'wrestling up': 'guard',
-  'k-guard': 'guard',
-  'k guard': 'guard',
-  'z-guard': 'guard',
-  'z guard': 'guard',
-  'knee shield': 'guard',
-  'reverse de la riva': 'guard',
-  'rdlr': 'guard',
-  'reverse dlr': 'guard',
-  'rubber guard': 'guard',
-  'worm guard': 'guard',
-  'lapel guard': 'guard',
-  'lapel guards': 'guard',
-  '93 guard': 'guard',
-  'ninety three guard': 'guard',
-  'shin to shin': 'guard',
-  'shin-to-shin': 'guard',
-  'shin on shin': 'guard',
-  'collar sleeve': 'guard',
-  'collar and sleeve': 'guard',
-  'lockdown': 'guard',
-  'electric chair': 'guard',
-  'berimbolo': 'guard',
-  'bolo': 'guard',
-  'tripod sweep': 'guard',
-  'lumberjack sweep': 'guard',
-  'waiter sweep': 'guard',
-  'muscle sweep': 'guard',
-  'old school': 'guard',
-  'old school sweep': 'guard',
-  'butterfly sweep': 'guard',
-  'hook sweep': 'guard',
-  'elevator sweep': 'guard',
-  'sit up sweep': 'guard',
-  'situp sweep': 'guard',
-  'sit-up sweep': 'guard',
-  'gogoplata': 'guard',
-  'wrist lock': 'guard', // hit from everywhere; guard chains dominate tagging
-  'wristlock': 'guard',
-  'wrist locks': 'guard',
-  'guard recovery': 'guard',
-  'granby roll': 'guard', // retention inversion (also a turtle escape; guard usage dominates)
-  'granby': 'guard',
+  t('Cow catcher', 'wrestling'),
+  // Judo
+  t('Judo', 'judo'),
+  t('Osoto gari', 'judo'),
+  t('Seoi nage', 'judo'),
+  t('Uchi mata', 'judo'),
+  t('O goshi', 'judo'),
+  t('Hip throw', 'judo'),
+  t('Foot sweep', 'judo'),
+  t('Kata guruma', 'judo'),
+  t('Ouchi gari', 'judo'),
+  t('Kouchi gari', 'judo'),
+  t('Kosoto gake', 'judo'),
+  t('Kosoto gari', 'judo'),
+  t('Harai goshi', 'judo', ['harai-goshi']),
+  t('Tomoe nage', 'judo'), // live tag (2026-10-27); the side variant below stays a separate tag
+  t('Yoko tomoe nage', 'judo'),
+
+  // ── Guard ──
+  // Generic attacks and sweeps hang directly from Guard: they are hit from
+  // several guards, so they stay generic leaves (owner ruling, 2026-10-28).
+  t('Guard retention', 'guard', ['retention']),
+  t('Guard recovery', 'guard'),
+  t('Granby roll', 'guard', ['granby']), // retention inversion (also a turtle escape; guard usage dominates)
+  t('Sweeps', 'guard'),
+  t('Lumberjack sweep', 'guard'),
+  t('Kimura', 'guard'),
+  t('Armbar', 'guard', ['arm bar']),
+  t('Triangle', 'guard', ['triangle choke']),
+  t('Omoplata', 'guard'),
+  t('Gogoplata', 'guard'),
+  t('Wrist lock', 'guard', ['wristlock', 'wrist locks']), // hit from everywhere; guard chains dominate tagging
+  t('Wrestling up', 'guard', ['wrestle up']),
+  // Closed guard
+  t('Closed guard', 'closed-guard'),
+  t('Top lock', 'closed-guard'), // a closed-guard variant despite the name — NOT top control (owner ruling)
+  t('Side scissors', 'closed-guard'), // closed-guard improved position (owner ruling)
+  // The closed-guard arm drag — distinct from the standing 'Arm drag' (owner ruling, 2026-10-16).
+  t('2-on-1 from closed guard', 'closed-guard', ['2on1 from closed guard', '2 on 1 from closed guard']),
+  t('Pendulum sweep', 'closed-guard', ['pendulum']),
+  t('Flower sweep', 'closed-guard'),
+  t('Hip bump', 'closed-guard', ['hip bump sweep']),
+  t('Scissor sweep', 'closed-guard'),
+  t('Sit up sweep', 'closed-guard', ['situp sweep', 'sit-up sweep']),
+  t('Muscle sweep', 'closed-guard'),
+  t('Rubber guard', 'closed-guard'), // closed-guard system — not open guard
+  // Open guard
+  t('Open guard', 'open-guard'),
+  t('De La Riva', 'open-guard', ['dlr', 'de la riva guard']),
+  t('DLR X', 'open-guard', ['deep dlr', 'deep de la riva']),
+  t('Single leg X', 'open-guard', ['slx', 'single leg x guard']), // an open guard (owner ruling, 2026-10)
+  t('X-guard', 'open-guard', ['x guard']),
+  t('Butterfly guard', 'open-guard', ['butterfly']),
+  t('Spider guard', 'open-guard', ['spider']),
+  t('Lasso', 'open-guard', ['lasso guard']),
+  t('K-guard', 'open-guard', ['k guard']),
+  t('Reverse De La Riva', 'open-guard', ['rdlr', 'reverse dlr']),
+  t('Worm guard', 'open-guard'),
+  t('Lapel guard', 'open-guard', ['lapel guards']),
+  t('93 guard', 'open-guard', ['ninety three guard']),
+  t('Shin to shin', 'open-guard', ['shin-to-shin', 'shin on shin']),
+  t('Collar sleeve', 'open-guard', ['collar and sleeve']),
+  t('Berimbolo', 'open-guard', ['bolo']),
+  t('Tripod sweep', 'open-guard'),
+  t('Butterfly sweep', 'open-guard'),
+  t('Hook sweep', 'open-guard'),
+  t('Elevator sweep', 'open-guard'),
+  // Half guard — practical usage (GB1 technically teaches it as side-control recovery)
+  t('Half guard', 'half-guard'),
+  t('Deep half', 'half-guard', ['deep half guard']),
+  t('Half butterfly', 'half-guard', ['half-butterfly']), // a half-guard variant, NOT open guard (owner ruling, 2026-10-16)
+  t('Z-guard', 'half-guard', ['z guard']), // half-guard family — not open guard
+  t('Knee shield', 'half-guard'),
+  t('Lockdown', 'half-guard'),
+  t('Electric chair', 'half-guard'),
+  t('Old school', 'half-guard', ['old school sweep']),
+  t('Waiter sweep', 'half-guard'),
+
   // ── Guard passing ──
-  'passing': 'passing',
-  'guard passing': 'passing',
-  'guard break': 'passing',
-  'opening closed guard': 'passing', // = guard break; GB teaches it in the guard-top weeks — live tag
-  'knee cut': 'passing',
-  'knee slice': 'passing',
-  'over-under pass': 'passing',
-  'over under pass': 'passing',
-  'torreando': 'passing',
-  'toreando': 'passing',
-  'double under': 'passing',
-  'double under pass': 'passing',
-  'long step pass': 'passing',
-  'leg drag': 'passing',
-  'stack pass': 'passing',
-  'x-pass': 'passing',
-  'x pass': 'passing',
-  'long step': 'passing',
-  'smash pass': 'passing',
-  'body lock pass': 'passing',
-  'folding pass': 'passing',
-  'knee compression pass': 'passing',
-  'hip switch': 'passing',
-  'hip switch pass': 'passing',
-  'headquarters': 'passing',
-  'hq': 'passing',
-  'head quarters': 'passing',
-  'float pass': 'passing',
-  'floating pass': 'passing',
-  'backstep': 'passing', // also a leg-entry motion; chiefly the half-guard backstep pass
-  'back step': 'passing',
-  'bullfighter': 'passing',
-  'bullfighter pass': 'passing',
-  'matador pass': 'passing',
-  'half guard pass': 'passing',
-  'half guard passing': 'passing',
-  'pressure passing': 'passing',
-  'pressure pass': 'passing',
-  'weave pass': 'passing',
-  'arm weave pass': 'passing',
-  'leg weave': 'passing',
-  'sao paulo pass': 'passing',
-  'tozi pass': 'passing',
-  // ── Side control ──
-  'side control': 'side',
-  'escapes': 'side',
-  'north south': 'side',
-  'north-south': 'side',
-  'shrimp': 'side',
-  'elbow escape': 'side',
-  'americana': 'side',
-  'kesa gatame': 'side',
-  'paper cutter': 'side',
-  'crossface': 'side',
-  'scarf hold': 'side',
-  'scarf hold control': 'side',
-  'reverse kesa gatame': 'side',
-  'reverse kesa': 'side',
-  'reverse scarf hold': 'side',
-  'north south choke': 'side',
-  'north-south choke': 'side',
-  'bread cutter': 'side',
-  'bread cutter choke': 'side',
-  'buggy choke': 'side', // attacked FROM BOTTOM side control — not top control
-  'ghost escape': 'side',
-  'running escape': 'side',
-  'running man escape': 'side',
-  // ── Mount & knee on belly ──
-  'mount': 'mount',
-  'mount attacks': 'mount',
-  'mount escapes': 'mount',
-  'technical mount': 'mount',
-  'knee on belly': 'mount',
-  'kob': 'mount',
-  'ezekiel': 'mount',
-  's-mount': 'mount',
-  'upa': 'mount',
-  'cross collar choke': 'mount',
-  'arm triangle': 'mount',
-  'head and arm choke': 'mount',
-  'kata gatame': 'mount',
-  'mounted triangle': 'mount',
-  'triangle from mount': 'mount',
-  'baseball bat choke': 'mount',
-  'baseball choke': 'mount',
-  'gift wrap': 'mount',
-  'giftwrap': 'mount',
-  'monoplata': 'mount',
-  // ── Back & turtle ──
-  'back takes': 'back',
-  'back control': 'back',
-  'back attacks': 'back',
-  'back escapes': 'back',
-  'rnc': 'back',
-  'rear naked choke': 'back',
-  'bow and arrow': 'back',
-  'darce': 'back',
-  "d'arce": 'back',
-  'anaconda': 'back',
-  'guillotine': 'back',
-  'front headlock': 'back',
-  'turtle': 'back',
-  'turtle defense': 'back', // bottom-side turtle work — back & turtle theme, not top control
-  'crucifix': 'back',
-  'clock choke': 'back',
-  'seatbelt': 'back',
-  'loop choke': 'back',
-  'peruvian necktie': 'back',
-  'japanese necktie': 'back',
-  'arm in guillotine': 'back',
-  'arm-in guillotine': 'back',
-  'body triangle': 'back',
-  'straight jacket': 'back',
-  'straitjacket': 'back',
-  'straight jacket system': 'back',
-  'rear triangle': 'back',
-  'back triangle': 'back',
-  'truck': 'back',
-  'the truck': 'back',
-  'twister': 'back',
-  'turtle attacks': 'back',
-  'turtle top': 'back',
-  'turtle escapes': 'back',
-  'turtle bottom': 'back',
-  'rear mount': 'back',
-  'back mount': 'back',
-  // ── Leg locks ──
-  'leg locks': 'legs',
-  'leglocks': 'legs',
-  'heel hook': 'legs',
-  'kneebar': 'legs',
-  'ankle lock': 'legs',
-  'straight ankle lock': 'legs',
-  'footlock': 'legs',
-  'toe hold': 'legs',
-  'ashi garami': 'legs',
-  'saddle': 'legs',
-  '50/50': 'legs',
-  'leg entanglements': 'legs',
-  'inside heel hook': 'legs',
-  'outside heel hook': 'legs',
-  'outside ashi': 'legs',
-  'double outside ashi': 'legs',
-  'inside sankaku': 'legs',
-  'inside senkaku': 'legs',
-  '411': 'legs',
-  '4-11': 'legs',
-  'honey hole': 'legs',
-  'honeyhole': 'legs',
-  'false reap': 'legs',
-  'knee reap': 'legs',
-  'reap': 'legs',
-  'reaping': 'legs',
-  '80/20': 'legs',
-  '80-20': 'legs',
-  'backside 50/50': 'legs',
-  'back side 50/50': 'legs',
-  'estima lock': 'legs',
-  'calf slicer': 'legs',
-  'calf crank': 'legs',
-  'calf cutter': 'legs',
+  t('Passing', 'passing', ['guard passing']),
+  // Pressure passing
+  t('Pressure passing', 'pressure-passing', ['pressure pass']),
+  t('Over-under pass', 'pressure-passing', ['over under pass', 'over-under', 'over under']),
+  t('Double under pass', 'pressure-passing', ['double under']),
+  t('Smash pass', 'pressure-passing'),
+  t('Stack pass', 'pressure-passing'),
+  t('Body lock pass', 'pressure-passing'),
+  t('Half guard pass', 'pressure-passing', ['half guard passing']),
+  t('Weave pass', 'pressure-passing', ['arm weave pass']),
+  t('Leg weave', 'pressure-passing'),
+  t('Sao Paulo pass', 'pressure-passing', ['tozi pass']),
+  t('Knee compression pass', 'pressure-passing'),
+  t('Folding pass', 'pressure-passing'),
+  // Dynamic passing
+  t('Knee cut', 'dynamic-passing', ['knee slice']),
+  t('Long step pass', 'dynamic-passing', ['long step']),
+  t('Toreando', 'dynamic-passing', ['torreando', 'bullfighter', 'bullfighter pass', 'matador pass']),
+  t('Leg drag', 'dynamic-passing'),
+  t('X-pass', 'dynamic-passing', ['x pass']),
+  t('Float pass', 'dynamic-passing', ['floating pass']),
+  t('Backstep', 'dynamic-passing', ['back step']), // also a leg-entry motion; chiefly the half-guard backstep pass
+  t('Hip switch', 'dynamic-passing', ['hip switch pass']),
+  t('Headquarters', 'dynamic-passing', ['hq', 'head quarters']),
+  // Opening closed guard — live tag; = guard break, taught in the guard-top weeks
+  t('Opening closed guard', 'opening-closed-guard', ['guard break']),
+
+  // ── Top control ── (pins and the back, worked from top)
+  // Side control
+  t('Side control', 'side-control'),
+  t('North south', 'side-control', ['north-south']),
+  t('Americana', 'side-control'),
+  t('Kesa gatame', 'side-control', ['scarf hold', 'scarf hold control']),
+  t('Reverse kesa gatame', 'side-control', ['reverse kesa', 'reverse scarf hold']),
+  t('Paper cutter', 'side-control', ['paper cutter choke']),
+  t('Crossface', 'side-control'),
+  t('North south choke', 'side-control', ['north-south choke']),
+  t('Bread cutter', 'side-control', ['bread cutter choke']),
+  // Mount & knee on belly
+  t('Mount', 'mount-kob'),
+  t('Mount attacks', 'mount-kob'),
+  t('Technical mount', 'mount-kob'),
+  t('Knee on belly', 'mount-kob', ['kob']),
+  t('Ezekiel', 'mount-kob'),
+  t('S-mount', 'mount-kob'),
+  t('Cross collar choke', 'mount-kob'),
+  t('Arm triangle', 'mount-kob', ['head and arm choke', 'kata gatame']),
+  t('Mounted triangle', 'mount-kob', ['triangle from mount']),
+  t('Baseball bat choke', 'mount-kob', ['baseball choke']),
+  t('Gift wrap', 'mount-kob', ['giftwrap']),
+  t('Monoplata', 'mount-kob'),
+  // Back & turtle — back control, turtle top, and the front-headlock family
+  // (turtle-adjacent, so Darce/anaconda/guillotine file here, not under side control)
+  t('Back takes', 'back-turtle', ['back take']),
+  t('Back control', 'back-turtle', ['rear mount', 'back mount']),
+  t('Back attacks', 'back-turtle'),
+  t('Rear naked choke', 'back-turtle', ['rnc']),
+  t('Bow and arrow', 'back-turtle', ['bow and arrow choke']),
+  t('Seatbelt', 'back-turtle'),
+  t('Body triangle', 'back-turtle'),
+  t('Straight jacket', 'back-turtle', ['straitjacket', 'straight jacket system']),
+  t('Rear triangle', 'back-turtle', ['back triangle']),
+  t('Crucifix', 'back-turtle'),
+  t('Clock choke', 'back-turtle'),
+  t('Loop choke', 'back-turtle'),
+  t('Darce', 'back-turtle', ["d'arce"]),
+  t('Anaconda', 'back-turtle'),
+  t('Guillotine', 'back-turtle'),
+  t('Arm in guillotine', 'back-turtle', ['arm-in guillotine']),
+  t('Front headlock', 'back-turtle'),
+  t('Peruvian necktie', 'back-turtle'),
+  t('Japanese necktie', 'back-turtle'),
+  t('Turtle', 'back-turtle'),
+  t('Turtle attacks', 'back-turtle', ['turtle top']),
+  t('Truck', 'back-turtle', ['the truck']),
+  t('Twister', 'back-turtle'),
+  t('Panda', 'back-turtle'), // owner ruling 2026-10-28: back & turtle work (it sat in Other)
+
+  // ── Escapes ── (the bottom game: surviving and escaping the pins, the back and the turtle)
+  t('Escapes', 'escapes'), // the generic tag — his most-used bottom tag, so the branch exists for it
+  t('Shrimp', 'escapes'),
+  t('Elbow escape', 'escapes'),
+  t('Mount escapes', 'escapes'),
+  t('Upa', 'escapes'),
+  t('Back escapes', 'escapes'),
+  t('Turtle defense', 'escapes', ['turtle bottom', 'turtle escapes']), // bottom-side turtle work, not top control (owner ruling)
+  t('Ghost escape', 'escapes'),
+  t('Running escape', 'escapes', ['running man escape']),
+  t('Buggy choke', 'escapes'), // attacked FROM BOTTOM side control — bottom game, never top control
+
+  // ── Leg locks ── (flat: the advanced tail of the cycle)
+  t('Leg locks', 'legs', ['leglocks']),
+  t('Heel hook', 'legs'),
+  t('Inside heel hook', 'legs'),
+  t('Outside heel hook', 'legs'),
+  t('Kneebar', 'legs', ['knee bar']),
+  t('Ankle lock', 'legs', ['straight ankle lock', 'footlock']),
+  t('Toe hold', 'legs'),
+  t('Ashi garami', 'legs'),
+  t('Saddle', 'legs', ['inside sankaku', 'inside senkaku', '411', '4-11', 'honey hole', 'honeyhole']),
+  t('50/50', 'legs'),
+  t('Backside 50/50', 'legs', ['back side 50/50']),
+  t('Outside ashi', 'legs'),
+  t('Double outside ashi', 'legs'),
+  t('Leg entanglements', 'legs'),
+  t('Knee reap', 'legs', ['reap', 'reaping', 'false reap']),
+  t('80/20', 'legs', ['80-20']),
+  t('Estima lock', 'legs'),
+  t('Calf slicer', 'legs', ['calf crank', 'calf cutter']),
+]
+
+const norm = (tag: string) => tag.trim().toLowerCase()
+
+const SUBGROUP_BY_ID = new Map<CurriculumSubgroupId, CurriculumSubgroup>(CURRICULUM_SUBGROUPS.map((s) => [s.id, s]))
+
+/** Normalized spelling (name or alias) → definition. First declaration wins; a test pins uniqueness. */
+const DEF_BY_KEY = new Map<string, TagDef>()
+for (const def of TAG_DEFS) {
+  for (const key of [def.name, ...(def.aliases ?? [])]) {
+    const k = norm(key)
+    if (!DEF_BY_KEY.has(k)) DEF_BY_KEY.set(k, def)
+  }
 }
 
 /**
  * The open-guard family — the explicit whitelist behind the "used open guard
  * in competition" milestone (closed guard and half guard deliberately
- * excluded; same no-heuristics policy as TAG_GROUP).
+ * excluded). A separate declaration from the Open guard sub-group on
+ * purpose: deep half sits under Half guard in the tree yet counts here, and
+ * the milestone's meaning must not drift with tree housekeeping. Same
+ * no-heuristics policy: exact membership of the normalized tag, aliases
+ * listed so unfolded spellings still match.
  */
 const OPEN_GUARD_TAGS = new Set([
   'open guard',
   'slx',
   'single leg x',
+  'single leg x guard',
   'de la riva',
+  'de la riva guard',
   'dlr',
   'dlr x',
+  'deep dlr',
+  'deep de la riva',
   'spider',
   'spider guard',
   'lasso',
+  'lasso guard',
   'butterfly',
   'butterfly guard',
   'x-guard',
   'x guard',
   'deep half',
+  'deep half guard',
   'k-guard',
   'k guard',
   'reverse de la riva',
@@ -387,36 +379,102 @@ const OPEN_GUARD_TAGS = new Set([
 ])
 
 export function isOpenGuardTag(tag: string): boolean {
-  return OPEN_GUARD_TAGS.has(tag.trim().toLowerCase())
+  return OPEN_GUARD_TAGS.has(norm(tag))
+}
+
+/**
+ * The canonical spelling of a tag: a known name or alias folds to its
+ * definition's name; an unknown tag is kept as typed, trimmed. Idempotent —
+ * canonicalTag(canonicalTag(x)) === canonicalTag(x) for every x.
+ */
+export function canonicalTag(tag: string): string {
+  return DEF_BY_KEY.get(norm(tag))?.name ?? tag.trim()
+}
+
+/**
+ * Canonical, deduplicated tag array for a stored row or list: non-strings
+ * and blanks are dropped, every member is folded through `canonicalTag`, and
+ * two spellings of one tag keep the first position only. Order preserved.
+ */
+export function canonicalTags(tags: readonly unknown[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of tags) {
+    if (typeof raw !== 'string') continue
+    const tag = canonicalTag(raw)
+    if (tag === '') continue
+    const k = norm(tag)
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(tag)
+  }
+  return out
+}
+
+/** Where a tag hangs: a branch or sub-group id, or 'other' when unmapped. */
+export function placeOfTag(tag: string): CurriculumPlace | 'other' {
+  return DEF_BY_KEY.get(norm(tag))?.place ?? 'other'
+}
+
+/** The branch a place belongs to (a sub-group's parent, or the branch itself). */
+export function groupOfPlace(place: CurriculumPlace | 'other'): CurriculumGroupId {
+  return SUBGROUP_BY_ID.get(place as CurriculumSubgroupId)?.group ?? (place as CurriculumGroupId)
 }
 
 export function groupOfTag(tag: string): CurriculumGroupId {
-  return TAG_GROUP[tag.trim().toLowerCase()] ?? 'other'
+  return groupOfPlace(placeOfTag(tag))
+}
+
+/** The tag's sub-group, or null when it hangs directly from its branch (or is unmapped). */
+export function subgroupOfTag(tag: string): CurriculumSubgroupId | null {
+  const place = placeOfTag(tag)
+  return SUBGROUP_BY_ID.has(place as CurriculumSubgroupId) ? (place as CurriculumSubgroupId) : null
+}
+
+export interface CurriculumSubsection {
+  subgroup: CurriculumSubgroupId
+  label: string
+  tags: string[]
 }
 
 export interface CurriculumSection {
   group: CurriculumGroupId
   label: string
+  /** Tags hanging directly from the branch, input order. */
   tags: string[]
+  /** Non-empty sub-groups only, in CURRICULUM_SUBGROUPS order; input order within each. */
+  subsections: CurriculumSubsection[]
 }
 
-/** Non-empty groups in curriculum order; input order preserved within a group. */
+/**
+ * Non-empty branches in curriculum order, each with its direct tags and its
+ * non-empty sub-groups; input order preserved within every list, and the
+ * caller's spellings kept (ordering is a lens, not a fold).
+ */
 export function groupTagsByCurriculum(tags: string[]): CurriculumSection[] {
-  const byGroup = new Map<CurriculumGroupId, string[]>()
-  for (const t of tags) {
-    const g = groupOfTag(t)
-    const list = byGroup.get(g)
-    if (list) list.push(t)
-    else byGroup.set(g, [t])
+  const byPlace = new Map<CurriculumPlace | 'other', string[]>()
+  for (const tag of tags) {
+    const place = placeOfTag(tag)
+    const list = byPlace.get(place)
+    if (list) list.push(tag)
+    else byPlace.set(place, [tag])
   }
-  return CURRICULUM_GROUPS.filter((g) => byGroup.has(g.id)).map((g) => ({
-    group: g.id,
-    label: g.label,
-    tags: byGroup.get(g.id)!,
-  }))
+  const sections: CurriculumSection[] = []
+  for (const g of CURRICULUM_GROUPS) {
+    const direct = byPlace.get(g.id) ?? []
+    const subsections: CurriculumSubsection[] = []
+    for (const s of CURRICULUM_SUBGROUPS) {
+      if (s.group !== g.id) continue
+      const list = byPlace.get(s.id)
+      if (list) subsections.push({ subgroup: s.id, label: s.label, tags: list })
+    }
+    if (direct.length === 0 && subsections.length === 0) continue
+    sections.push({ group: g.id, label: g.label, tags: direct, subsections })
+  }
+  return sections
 }
 
-/** Flat curriculum order — stable within groups; unknown tags last in input order. */
+/** Flat curriculum order — a branch's direct tags, then its sub-groups in order; unknown tags last in input order. */
 export function orderTagsByCurriculum(tags: string[]): string[] {
-  return groupTagsByCurriculum(tags).flatMap((s) => s.tags)
+  return groupTagsByCurriculum(tags).flatMap((s) => [...s.tags, ...s.subsections.flatMap((sub) => sub.tags)])
 }

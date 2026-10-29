@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { canonicalTag, placeOfTag, TAG_DEFS } from './curriculum'
 import type { Competition, Session } from './types'
 import {
   CHARACTERISTICS,
+  RETENTION_TAGS,
+  TOP_CONTROL_TAGS,
   characteristics,
   characterLevel,
   compXp,
@@ -247,6 +250,20 @@ describe('characteristics', () => {
     // several pin formats in one session still count once
     const many = characteristics([mk(TODAY, { specMount: 1, specSide: 1, specBack: 1, specific: 3 })], [])
     expect(byId(many, 'top-control').xp).toBe(25)
+  })
+
+  it('every vocabulary spelling credits exactly what its canonical name credits (the whitelists stay in step with TAG_DEFS)', () => {
+    // A rename whose new name is missing from TOP_CONTROL_TAGS / RETENTION_TAGS, or an alias
+    // absent from them, would silently move a level once the boundaries fold stored rows.
+    for (const def of TAG_DEFS)
+      for (const spelling of [def.name, ...(def.aliases ?? [])])
+        for (const c of CHARACTERISTICS)
+          for (const gi of [true, false])
+            expect(c.matches(spelling, gi), `${c.id}: ${spelling} vs ${def.name}`).toBe(c.matches(canonicalTag(spelling), gi))
+  })
+
+  it('every whitelisted spelling is a known vocabulary entry', () => {
+    for (const t of [...TOP_CONTROL_TAGS, ...RETENTION_TAGS]) expect(placeOfTag(t), t).not.toBe('other')
   })
 
   it('competitions feed 60 and levels derive from xp', () => {

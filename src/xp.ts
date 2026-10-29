@@ -100,16 +100,19 @@ export function yearXp(sessions: Session[], competitions: Competition[], todayIs
 
 /**
  * Explicit top-position whitelist: pins and back control worked FROM TOP.
- * Escapes and guard recovery live under the side/mount/back curriculum groups
- * but are bottom work — deliberately absent here.
+ * Escapes, turtle defense and guard recovery are bottom work (the Escapes
+ * branch and Guard in src/curriculum.ts) — deliberately absent here. Keys are
+ * normalized spellings; a tag rename in curriculum.ts must keep its canonical
+ * name's normalized form listed, or the tag silently stops feeding the level.
  */
-const TOP_CONTROL_TAGS = new Set([
+export const TOP_CONTROL_TAGS: ReadonlySet<string> = new Set([
   'side control',
   'north south',
   'north-south',
   'kesa gatame',
   'americana',
   'paper cutter',
+  'paper cutter choke',
   'crossface',
   'mount',
   'mount attacks',
@@ -120,11 +123,13 @@ const TOP_CONTROL_TAGS = new Set([
   's-mount',
   'cross collar choke',
   'back takes',
+  'back take',
   'back control',
   'back attacks',
   'rnc',
   'rear naked choke',
   'bow and arrow',
+  'bow and arrow choke',
   'seatbelt',
   'clock choke',
   'crucifix',
@@ -169,7 +174,8 @@ const TOP_CONTROL_TAGS = new Set([
   'turtle top',
 ])
 
-const RETENTION_TAGS = new Set(['guard retention', 'retention', 'guard recovery', 'granby roll', 'granby'])
+/** Exported with TOP_CONTROL_TAGS for the lockstep test in xp.test.ts only. */
+export const RETENTION_TAGS: ReadonlySet<string> = new Set(['guard retention', 'retention', 'guard recovery', 'granby roll', 'granby'])
 
 const norm = (tag: string) => tag.trim().toLowerCase()
 
