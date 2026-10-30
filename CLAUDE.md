@@ -144,11 +144,12 @@ with `--mode nosync` for any click-through.
   (the 2026-10-28 rename normalized his live tags that way: Closed Guard →
   Closed guard, SLX → Single leg X, …). The hierarchy is the owner's own game
   map since 2026-10-28 (Standing & takedowns · Guard · Guard passing · Top
-  control · Escapes · Leg locks, with sub-groups where his tags cluster), not
-  the Gracie Barra groups it replaced; it has three documented judgment calls
-  (Escapes → the Escapes branch, Half guard → Guard › Half guard, Darce → Top
-  control › Back & turtle) and a list of owner rulings pinned by tests —
-  don't "fix" them casually.
+  control · Escapes & defense · Leg locks, with sub-groups where his tags
+  cluster — Escapes & defense › Turtle defense holds Turtle defense and Panda
+  since 2026-10-30), not the Gracie Barra groups it replaced; it has three
+  documented judgment calls (Escapes → directly on Escapes & defense, Half
+  guard → Guard › Half guard, Darce → Top control › Back & turtle) and a list
+  of owner rulings pinned by tests — don't "fix" them casually.
 - The six characteristics in `src/xp.ts` (passing, guard retention,
   takedowns-gi, wrestling-nogi, leg locks, top control — labelled "Top
   control / Pinning") are the owner's chosen **lifelong attribute set** — the
@@ -183,8 +184,9 @@ with `--mode nosync` for any click-through.
   list or session-borne tag, dim until trained), progress
   is the characteristic scale (25/60 flat grants, 50/25 curve) derived in
   `src/tree.ts`; typed swap rounds light positions — the sub-group, its branch
-  and the other role's branch (`SPEC_GROUPS`; pin rounds light Escapes in the
-  tree but feed no attribute). The owner rejected importing his curated
+  and the other role's place (`SPEC_GROUPS`; pin rounds light Escapes &
+  defense in the tree, turtle rounds through its Turtle defense sub-group,
+  but feed no attribute). The owner rejected importing his curated
   RPGreal tree — don't re-propose a hand-built node tree; a tag joins the
   right node through its `TAG_DEFS` place.
   "Set as focus" on a leaf writes the weekly focus (see docs/skill-tree.md).

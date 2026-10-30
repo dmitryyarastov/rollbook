@@ -149,7 +149,7 @@ describe('characteristics', () => {
   it('top-side pinning tags credit top control; bottom work does not', () => {
     const tagged = (tag: string) => byId(characteristics([mk(TODAY, { tags: [tag] })], []), 'top-control').xp
     for (const top of ['Side Control', 'Mount', 'Back takes', 'Cow catcher', 'Darce']) expect(tagged(top), top).toBe(25)
-    for (const bottom of ['Turtle defense', 'Escapes', 'Buggy choke']) expect(tagged(bottom), bottom).toBe(0)
+    for (const bottom of ['Turtle defense', 'Panda', 'Escapes', 'Buggy choke']) expect(tagged(bottom), bottom).toBe(0)
   })
 
   it('a session feeds every attribute its tags touch, flat 25 each', () => {

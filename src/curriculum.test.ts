@@ -39,7 +39,7 @@ describe('orderTagsByCurriculum', () => {
       'Passing', 'Over-Under Pass', 'Knee cut',
       // top control: side › mount › back & turtle
       'Side Control', 'Mount attacks', 'Mount', 'Darce', 'Back takes',
-      // escapes
+      // escapes & defense
       'Escapes',
       // leg locks
       'Leg locks',
@@ -101,18 +101,19 @@ describe('groupTagsByCurriculum', () => {
       'standing', 'guard', 'passing', 'top', 'escapes', 'legs', 'other',
     ])
     expect(CURRICULUM_GROUPS.map((g) => g.label)).toEqual([
-      'Standing & takedowns', 'Guard', 'Guard passing', 'Top control', 'Escapes', 'Leg locks', 'Other',
+      'Standing & takedowns', 'Guard', 'Guard passing', 'Top control', 'Escapes & defense', 'Leg locks', 'Other',
     ])
   })
 
-  it('sub-groups sit under their branch in display order; Escapes, Leg locks and Other are flat', () => {
+  it('sub-groups sit under their branch in display order; Leg locks and Other are flat', () => {
     expect(CURRICULUM_SUBGROUPS.map((s) => `${s.group}/${s.id}`)).toEqual([
       'standing/wrestling', 'standing/judo',
       'guard/closed-guard', 'guard/open-guard', 'guard/half-guard',
       'passing/pressure-passing', 'passing/dynamic-passing', 'passing/opening-closed-guard',
       'top/side-control', 'top/mount-kob', 'top/back-turtle',
+      'escapes/turtle-defense',
     ])
-    for (const s of CURRICULUM_SUBGROUPS) expect(['escapes', 'legs', 'other']).not.toContain(s.group)
+    for (const s of CURRICULUM_SUBGROUPS) expect(['legs', 'other']).not.toContain(s.group)
   })
 })
 
@@ -195,7 +196,7 @@ describe('canonical spellings (2026-10-28 rename)', () => {
 })
 
 describe('placement: judgment calls, owner rulings and the live audit', () => {
-  it("files generic 'Escapes' in the Escapes branch (the bottom game has its own branch since 2026-10-28)", () => {
+  it("files generic 'Escapes' directly in Escapes & defense (the bottom game has its own branch since 2026-10-28)", () => {
     expect(groupOfTag('Escapes')).toBe('escapes')
     expect(subgroupOfTag('Escapes')).toBeNull()
   })
@@ -236,16 +237,37 @@ describe('placement: judgment calls, owner rulings and the live audit', () => {
       expect(groupOfTag(generic), generic).toBe('guard')
       expect(subgroupOfTag(generic), generic).toBeNull()
     }
-    expect(placeOfTag('Panda')).toBe('back-turtle') // moved out of Other
+    expect(groupOfTag('Panda')).not.toBe('other') // moved out of Other (placed by the 2026-10-30 ruling below)
     expect(groupOfTag('Roll through defense')).toBe('other') // left as it is
     // Top control is split three ways; Escapes holds the bottom game
     expect(placeOfTag('Side control')).toBe('side-control')
     expect(placeOfTag('Mount attacks')).toBe('mount-kob')
     expect(placeOfTag('Gift wrap')).toBe('mount-kob')
     expect(placeOfTag('Back takes')).toBe('back-turtle')
-    expect(placeOfTag('Turtle defense')).toBe('escapes')
+    expect(groupOfTag('Turtle defense')).toBe('escapes')
     expect(placeOfTag('Mount escapes')).toBe('escapes')
     expect(placeOfTag('Buggy choke')).toBe('escapes') // bottom-side attack — the bottom game, not top control
+  })
+
+  it("pins the owner's 2026-10-30 rulings", () => {
+    // the bottom branch is "Escapes & defense"; turtle work is its own sub-group
+    expect(CURRICULUM_GROUPS.find((g) => g.id === 'escapes')?.label).toBe('Escapes & defense')
+    expect(CURRICULUM_SUBGROUPS.find((s) => s.id === 'turtle-defense')).toEqual({
+      id: 'turtle-defense', group: 'escapes', label: 'Turtle defense',
+    })
+    for (const spelling of ['Panda', 'panda', 'Turtle defense', 'turtle bottom', 'Turtle escapes']) {
+      expect(placeOfTag(spelling), spelling).toBe('turtle-defense')
+      expect(groupOfTag(spelling), spelling).toBe('escapes')
+    }
+    // the generic escapes and the other bottom work stay directly on the branch
+    for (const direct of ['Escapes', 'Mount escapes', 'Back escapes', 'Buggy choke'])
+      expect(subgroupOfTag(direct), direct).toBeNull()
+    // the cloud and the Log picker group them the same way
+    const [section] = groupTagsByCurriculum(['Panda', 'Escapes', 'Turtle defense'])
+    expect(section).toEqual({
+      group: 'escapes', label: 'Escapes & defense', tags: ['Escapes'],
+      subsections: [{ subgroup: 'turtle-defense', label: 'Turtle defense', tags: ['Panda', 'Turtle defense'] }],
+    })
   })
 
   it('maps every live tag (2026-10-28) to a real branch, except Roll through defense by ruling', () => {

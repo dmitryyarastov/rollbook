@@ -157,12 +157,27 @@ describe('skillTree progress', () => {
     expect(back.map((b) => b.group)).toEqual(['top', 'escapes'])
     expect(branch(back, 'top').xp).toBe(25)
     expect(branch(back, 'top').subgroups.map((s) => [s.subgroup, s.xp, s.total])).toEqual([['back-turtle', 25, 0]])
+    // the turtle round's bottom role is turtle defense; flat per entry, so the branch still gets 25 once
+    expect(branch(back, 'escapes').xp).toBe(25)
+    expect(branch(back, 'escapes').subgroups.map((s) => [s.subgroup, s.xp, s.total])).toEqual([['turtle-defense', 25, 0]])
+    const backOnly = skillTree([], [mk(TODAY, { specBack: 1, specific: 1 })], [])
+    expect(branch(backOnly, 'escapes')).toMatchObject({ xp: 25, subgroups: [] }) // back escapes are not turtle defense
     const mount = skillTree([], [mk(TODAY, { specMount: 3, specific: 3 })], [])
     expect(mount.map((b) => b.group)).toEqual(['top', 'escapes'])
     expect(branch(mount, 'top').subgroups.map((s) => s.subgroup)).toEqual(['mount-kob'])
     const open = skillTree([], [mk(TODAY, { specOpen: 1, specific: 1 })], [])
     expect(open.map((b) => b.group)).toEqual(['guard', 'passing'])
     expect(branch(open, 'guard').subgroups.map((s) => s.subgroup)).toEqual(['open-guard'])
+  })
+
+  it('hangs Panda and Turtle defense under Escapes & defense › Turtle defense (owner ruling 2026-10-30)', () => {
+    const tree = skillTree(['Escapes', 'Turtle defense', 'Panda'], [mk(TODAY, { tags: ['Panda'] })], [])
+    expect(tree.map((b) => b.group)).toEqual(['escapes'])
+    expect(branch(tree, 'escapes')).toMatchObject({ label: 'Escapes & defense', xp: 25, explored: 1, total: 3 })
+    expect(names(branch(tree, 'escapes').tags)).toEqual(['Escapes'])
+    expect(sub(tree, 'escapes', 'turtle-defense')).toMatchObject({ label: 'Turtle defense', xp: 25, explored: 1, total: 2 })
+    expect(names(sub(tree, 'escapes', 'turtle-defense').tags)).toEqual(['Panda', 'Turtle defense'])
+    expect(leaf(tree, 'escapes', 'Panda').xp).toBe(25)
   })
 
   it('pins the typed-round mapping', () => {
@@ -172,7 +187,7 @@ describe('skillTree progress', () => {
       specSide: ['side-control', 'escapes'],
       specMount: ['mount-kob', 'escapes'],
       specBack: ['back-turtle', 'escapes'],
-      specTurtle: ['back-turtle', 'escapes'],
+      specTurtle: ['back-turtle', 'turtle-defense'],
     })
   })
 

@@ -8,12 +8,18 @@ The module began (2026-08) as a Gracie Barra (GB) curriculum ordering. GB teache
 
 On **2026-10-28** the owner replaced the seven GB position groups with his **own top level** — the map of the game from his RPGreal skill tree ([skill-tree.md](skill-tree.md)), with the Top control and Escapes branches he had asked for on 2026-10-23 — and added a **second level** where his tags cluster. The same session normalized his tag spellings (next section). His rulings, all pinned by `src/curriculum.test.ts`:
 
-- **Six branches**: Standing & takedowns · Guard · Guard passing · Top control · Escapes · Leg locks, plus the trailing Other.
-- **Top control splits three ways**: Side control · Mount & knee on belly · Back & turtle. Darce and Panda file under Back & turtle (the front-headlock family stays turtle-adjacent, as it always did).
-- **Escapes is a branch of its own**: the generic Escapes tag, Turtle defense, and the harvested escape names (mount/back escapes, upa, shrimp, elbow, ghost and running escapes). Roll through defense stays in Other, as he ruled.
+- **Six branches**: Standing & takedowns · Guard · Guard passing · Top control · Escapes · Leg locks, plus the trailing Other. (Escapes became **Escapes & defense** on 2026-10-30, below.)
+- **Top control splits three ways**: Side control · Mount & knee on belly · Back & turtle. Darce files under Back & turtle (the front-headlock family stays turtle-adjacent, as it always did); Panda did too until 2026-10-30.
+- **Escapes is a branch of its own** (flat at first): the generic Escapes tag, Turtle defense, and the harvested escape names (mount/back escapes, upa, shrimp, elbow, ghost and running escapes). Roll through defense stays in Other, as he ruled.
 - **Generic submissions and sweeps hang directly from Guard** (Kimura, Armbar, Triangle, Sweeps, Lumberjack sweep, plus Guard retention) — they are hit from several guards, so they are not filed inside Closed / Open / Half.
-- **Panda → Back & turtle**; **Roll through defense → leave in Other** (his words, same day).
+- **Panda → Back & turtle** (superseded on 2026-10-30, below); **Roll through defense → leave in Other** (his words, same day).
 - **Side / mount / back / turtle swap rounds light Top control *and* Escapes** in the tree — the both-roles rule — while the characteristics stay Top-control-only ([skill-tree.md](skill-tree.md), [stats.md](stats.md)).
+
+On **2026-10-30** he refined the bottom branch, pinned by the "owner's 2026-10-30 rulings" test:
+
+- **Escapes → Escapes & defense** — the branch label only; the id stays `escapes`, so nothing stored or derived moves.
+- **Turtle defense becomes a sub-group** of Escapes & defense, holding the Turtle defense tag (with its `turtle bottom` / `turtle escapes` aliases) and **Panda**, which moves there from Top control › Back & turtle — it is defending from turtle, bottom work. The generic Escapes and the pin and back escapes stay directly on the branch.
+- Consequence in the tree (not a separate ruling): the turtle swap round's bottom role now lights the Turtle defense sub-group, and through it Escapes & defense, instead of the bare branch ([skill-tree.md](skill-tree.md)).
 
 ## The hierarchy
 
@@ -25,17 +31,17 @@ On **2026-10-28** the owner replaced the seven GB position groups with his **own
 | `guard` | Guard | `closed-guard` Closed guard · `open-guard` Open guard · `half-guard` Half guard |
 | `passing` | Guard passing | `pressure-passing` Pressure passing · `dynamic-passing` Dynamic passing · `opening-closed-guard` Opening closed guard |
 | `top` | Top control | `side-control` Side control · `mount-kob` Mount & knee on belly · `back-turtle` Back & turtle |
-| `escapes` | Escapes | — (flat) |
+| `escapes` | Escapes & defense | `turtle-defense` Turtle defense |
 | `legs` | Leg locks | — (flat) |
 | `other` | Other | — (the trailing bucket for unmapped tags; never a place a tag is declared in) |
 
-A tag's **place** (`CurriculumPlace`) is either a branch id or a sub-group id: a tag with a sub-group entry sits in it; a tag declared on a branch hangs **directly** from that branch (Takedowns, Guard pull, Passing, the generic guard attacks, every Escapes and Leg locks tag). Where his live tags sit on 2026-10-28:
+A tag's **place** (`CurriculumPlace`) is either a branch id or a sub-group id: a tag with a sub-group entry sits in it; a tag declared on a branch hangs **directly** from that branch (Takedowns, Guard pull, Passing, the generic guard attacks, the generic Escapes and the pin and back escapes, every Leg locks tag). Where his live tags sit (2026-10-30):
 
 - Standing & takedowns › **Wrestling**: Single leg takedown, Arm drag, Slide by, Cow catcher · **Judo**: Tomoe nage, Yoko tomoe nage
 - Guard (direct): Guard retention, Sweeps, Lumberjack sweep, Kimura, Armbar, Triangle · **Closed guard**: Closed guard, Top lock, Side scissors, 2-on-1 from closed guard, Pendulum sweep · **Open guard**: De La Riva, DLR X, Single leg X, Spider guard · **Half guard**: Half guard, Half butterfly
 - Guard passing (direct): Passing · **Pressure passing**: Over-under pass, Double under pass, Smash pass · **Dynamic passing**: Knee cut, Long step pass · **Opening closed guard**: Opening closed guard
-- Top control › **Side control**: Side control · **Mount & knee on belly**: Mount attacks, Mount, Gift wrap · **Back & turtle**: Back takes, Darce, Panda
-- Escapes: Escapes, Turtle defense
+- Top control › **Side control**: Side control · **Mount & knee on belly**: Mount attacks, Mount, Gift wrap · **Back & turtle**: Back takes, Darce
+- Escapes & defense (direct): Escapes · **Turtle defense**: Turtle defense, Panda
 - Leg locks: Leg locks
 - Other: Roll through defense
 
@@ -76,7 +82,7 @@ Stored data is therefore never migrated in place: a row written before the renam
 
 Three deviations from a naive placement, each pinned by a named test in `src/curriculum.test.ts`. The 2026-10-28 top level re-homed two of them; the reasoning stands:
 
-1. **Generic `Escapes` → the Escapes branch.** Until 2026-10-28 it filed under Side control (GB's pin-escape rotation starts there); the owner's Escapes branch now holds the whole bottom game, so the generic tag — his second most-used — anchors that branch. Turtle defense, mount/back escapes and the harvested escape names sit beside it. (Buggy choke, a bottom-side-control attack, files here too: it is bottom work, and must never feed Top control.)
+1. **Generic `Escapes` → directly on Escapes & defense.** Until 2026-10-28 it filed under Side control (GB's pin-escape rotation starts there); the owner's Escapes & defense branch now holds the whole bottom game, so the generic tag — his second most-used — anchors that branch. Mount/back escapes and the harvested escape names sit beside it; the turtle work has its own Turtle defense sub-group. (Buggy choke, a bottom-side-control attack, files here too: it is bottom work, and must never feed Top control.)
 2. **`Half guard` → Guard › Half guard.** GB1 technically teaches half guard as side-control recovery; practical usage (how this user tags sessions) treats it as a guard. Deep half, Half butterfly, Z-guard, knee shield, lockdown and the half-guard sweeps sit with it.
 3. **`Darce` → Top control › Back & turtle** (with anaconda, guillotine, front headlock, the neckties). The front-headlock family is turtle-adjacent, so it files with back and turtle rather than under side control or a submissions bucket. Cow catcher is the exception by owner ruling (below).
 
@@ -88,12 +94,12 @@ Three deviations from a naive placement, each pinned by a named test in `src/cur
 - **`Pendulum sweep` (was `Pendulum`) → Guard › Closed guard.**
 - **`Double under pass` → Guard passing › Pressure passing; `Long step pass` → Dynamic passing.**
 - **`Slide by` → Standing › Wrestling** — a no-gi standing technique (the gi split routes it to the Wrestling · No-Gi characteristic on no-gi sessions).
-- **`Turtle defense` → Escapes** — bottom-side turtle work; deliberately not top control. (Until 2026-10-28 it filed under Back & turtle.)
+- **`Turtle defense` → Escapes & defense › Turtle defense** — bottom-side turtle work; deliberately not top control. (Until 2026-10-28 it filed under Back & turtle; directly on the Escapes branch until 2026-10-30, when it got its own sub-group.)
 - **`2-on-1 from closed guard` (was `2on1 from closed guard`) → Guard › Closed guard** (2026-10-16) — the owner's name for the arm drag (two-on-one) hit from closed guard, usually into a back take. It is deliberately a separate tag from `Arm drag`, which stays under Standing › Wrestling for arm drags on the feet (no-gi, alongside `Slide by`). As a guard-bottom attack it feeds no characteristic; it is not an open guard.
 - **`Half butterfly` → Guard › Half guard**, **not** in `OPEN_GUARD_TAGS` — owner ruling (2026-10-16): it is a half-guard variant, so like Z-guard it does not satisfy the open-guard milestone.
 - **`Single leg takedown` → Standing › Wrestling** (2026-10-27): the skill tree made the gap visible — the map knew `single leg` but not his tag's spelling, so the leaf sat under Other. Its hyphenated and double-leg twins are aliases of it and of `Double leg takedown`; as standing tags they feed Takedowns · Gi / Wrestling · No-Gi through `groupOfTag` (pinned in `src/xp.test.ts`).
 - **`Cow catcher` → Standing › Wrestling** (2026-10-27, overriding the 2026-10-16 research placement under back & turtle): for him it is standing work, a front-headlock entry off the feet. It keeps its `TOP_CONTROL_TAGS` entry in `src/xp.ts` — removing it would silently lower his Top control level — so a cow-catcher session feeds Top control **and** Takedowns · Gi / Wrestling · No-Gi.
-- **`Panda` → Top control › Back & turtle** (2026-10-28; it sat in Other). **`Roll through defense` stays in Other** (same ruling: "leave as it is").
+- **`Panda` → Escapes & defense › Turtle defense** (2026-10-30: defending from turtle, so bottom work; deliberately absent from `TOP_CONTROL_TAGS`). It sat in Other until 2026-10-28, then two days under Top control › Back & turtle. **`Roll through defense` stays in Other** (2026-10-28 ruling: "leave as it is").
 
 Research placements that are not owner rulings (revisit if he disagrees): `Yoko tomoe nage` and `Tomoe nage` → Judo (he keeps both tags; the side variant is its own technique), `Opening closed guard` → its own passing sub-group (= guard break; GB teaches it in the guard-top weeks).
 

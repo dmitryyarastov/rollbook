@@ -69,9 +69,12 @@ export interface TreeBranch extends NodeProgress {
  * guard sub-group (and Guard through it) plus Guard passing — the same
  * crediting as the characteristics; a pin, back or turtle format trains the
  * control from top and the escape from bottom, so it credits its Top control
- * sub-group (and Top control) plus Escapes (owner ruling, 2026-10-28; the
- * characteristics credit Top control only, by design — the escaping side has
- * no attribute). Crediting a sub-group always credits its branch too.
+ * sub-group (and Top control) plus Escapes & defense (owner ruling,
+ * 2026-10-28; the characteristics credit Top control only, by design — the
+ * escaping side has no attribute). The turtle format's bottom role is turtle
+ * defense, so it reaches that branch through its Turtle defense sub-group
+ * (since that sub-group was created, 2026-10-30). Crediting a sub-group
+ * always credits its branch too.
  */
 export const SPEC_GROUPS: Record<SpecKey, readonly CurriculumPlace[]> = {
   specClosed: ['closed-guard', 'passing'],
@@ -79,7 +82,7 @@ export const SPEC_GROUPS: Record<SpecKey, readonly CurriculumPlace[]> = {
   specSide: ['side-control', 'escapes'],
   specMount: ['mount-kob', 'escapes'],
   specBack: ['back-turtle', 'escapes'],
-  specTurtle: ['back-turtle', 'escapes'],
+  specTurtle: ['back-turtle', 'turtle-defense'],
 }
 
 const norm = (tag: string) => tag.trim().toLowerCase()

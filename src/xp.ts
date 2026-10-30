@@ -100,10 +100,11 @@ export function yearXp(sessions: Session[], competitions: Competition[], todayIs
 
 /**
  * Explicit top-position whitelist: pins and back control worked FROM TOP.
- * Escapes, turtle defense and guard recovery are bottom work (the Escapes
- * branch and Guard in src/curriculum.ts) — deliberately absent here. Keys are
- * normalized spellings; a tag rename in curriculum.ts must keep its canonical
- * name's normalized form listed, or the tag silently stops feeding the level.
+ * Escapes, turtle defense (Panda included) and guard recovery are bottom work
+ * (the Escapes & defense branch and Guard in src/curriculum.ts) — deliberately
+ * absent here. Keys are normalized spellings; a tag rename in curriculum.ts
+ * must keep its canonical name's normalized form listed, or the tag silently
+ * stops feeding the level.
  */
 export const TOP_CONTROL_TAGS: ReadonlySet<string> = new Set([
   'side control',

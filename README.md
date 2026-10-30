@@ -156,10 +156,10 @@ the handoff — they were tweakable props in the prototype).
 ## Tag vocabulary and hierarchy
 
 Technique tags hang from a two-level map of the game — Standing & takedowns →
-Guard → Guard passing → Top control → Escapes → Leg locks, with sub-groups
-where the tags cluster (Wrestling / Judo; Closed / Open / Half guard; Pressure /
-Dynamic passing / Opening closed guard; Side control / Mount & knee on belly /
-Back & turtle) — everywhere they appear: the Log chips and the focus-tag picker
+Guard → Guard passing → Top control → Escapes & defense → Leg locks, with
+sub-groups where the tags cluster (Wrestling / Judo; Closed / Open / Half guard;
+Pressure / Dynamic passing / Opening closed guard; Side control / Mount & knee
+on belly / Back & turtle; Turtle defense) — everywhere they appear: the Log chips and the focus-tag picker
 follow that order, the Techniques tag cloud shows the labelled branches and
 sub-groups, and the skill tree nests them with per-node progress. The owner's
 own game map (October 2026) replaced the Gracie Barra position-theme ordering

@@ -3,9 +3,9 @@
  * into them, and the two-level hierarchy every tag hangs from. The top level
  * is the owner's own map of the game (2026-10-28, replacing the Gracie Barra
  * position groups the module started with): Standing & takedowns → Guard →
- * Guard passing → Top control → Escapes → Leg locks, with Other trailing for
- * unmapped tags. Sub-groups sit under a branch only where his tags cluster;
- * a tag without one hangs directly from its branch.
+ * Guard passing → Top control → Escapes & defense → Leg locks, with Other
+ * trailing for unmapped tags. Sub-groups sit under a branch only where his
+ * tags cluster; a tag without one hangs directly from its branch.
  *
  * Two jobs, both pure: display-time ordering (the persisted tagList stays
  * append-only master data in input order) and canonicalization — a pure,
@@ -30,6 +30,7 @@ export type CurriculumSubgroupId =
   | 'side-control'
   | 'mount-kob'
   | 'back-turtle'
+  | 'turtle-defense'
 
 export interface CurriculumGroup {
   id: CurriculumGroupId
@@ -48,12 +49,14 @@ export const CURRICULUM_GROUPS: CurriculumGroup[] = [
   { id: 'guard', label: 'Guard' },
   { id: 'passing', label: 'Guard passing' },
   { id: 'top', label: 'Top control' },
-  { id: 'escapes', label: 'Escapes' },
+  // Owner ruling 2026-10-30: renamed from "Escapes" — the branch holds the
+  // whole bottom game, defending the turtle included. The id stays 'escapes'.
+  { id: 'escapes', label: 'Escapes & defense' },
   { id: 'legs', label: 'Leg locks' },
   { id: 'other', label: 'Other' },
 ]
 
-/** The sub-groups, in display order within their branch. Other, Escapes and Leg locks are flat. */
+/** The sub-groups, in display order within their branch. Other and Leg locks are flat. */
 export const CURRICULUM_SUBGROUPS: CurriculumSubgroup[] = [
   { id: 'wrestling', group: 'standing', label: 'Wrestling' },
   { id: 'judo', group: 'standing', label: 'Judo' },
@@ -66,6 +69,7 @@ export const CURRICULUM_SUBGROUPS: CurriculumSubgroup[] = [
   { id: 'side-control', group: 'top', label: 'Side control' },
   { id: 'mount-kob', group: 'top', label: 'Mount & knee on belly' },
   { id: 'back-turtle', group: 'top', label: 'Back & turtle' },
+  { id: 'turtle-defense', group: 'escapes', label: 'Turtle defense' },
 ]
 
 /** Where a mapped tag hangs: directly from a branch, or in one of its sub-groups. */
@@ -281,19 +285,24 @@ export const TAG_DEFS: readonly TagDef[] = [
   t('Turtle attacks', 'back-turtle', ['turtle top']),
   t('Truck', 'back-turtle', ['the truck']),
   t('Twister', 'back-turtle'),
-  t('Panda', 'back-turtle'), // owner ruling 2026-10-28: back & turtle work (it sat in Other)
 
-  // ── Escapes ── (the bottom game: surviving and escaping the pins, the back and the turtle)
+  // ── Escapes & defense ── (the bottom game: surviving and escaping the pins,
+  // the back and the turtle; the turtle work has its own sub-group)
   t('Escapes', 'escapes'), // the generic tag — his most-used bottom tag, so the branch exists for it
   t('Shrimp', 'escapes'),
   t('Elbow escape', 'escapes'),
   t('Mount escapes', 'escapes'),
   t('Upa', 'escapes'),
   t('Back escapes', 'escapes'),
-  t('Turtle defense', 'escapes', ['turtle bottom', 'turtle escapes']), // bottom-side turtle work, not top control (owner ruling)
   t('Ghost escape', 'escapes'),
   t('Running escape', 'escapes', ['running man escape']),
   t('Buggy choke', 'escapes'), // attacked FROM BOTTOM side control — bottom game, never top control
+  // Turtle defense — bottom-side turtle work, never top control (owner ruling)
+  t('Turtle defense', 'turtle-defense', ['turtle bottom', 'turtle escapes']),
+  // Owner ruling 2026-10-30: defending from turtle, so bottom work under Turtle
+  // defense (2026-10-28 had it under Top control › Back & turtle; it sat in
+  // Other before that). Deliberately absent from TOP_CONTROL_TAGS (src/xp.ts).
+  t('Panda', 'turtle-defense'),
 
   // ── Leg locks ── (flat: the advanced tail of the cycle)
   t('Leg locks', 'legs', ['leglocks']),
