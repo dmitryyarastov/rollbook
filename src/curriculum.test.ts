@@ -155,6 +155,7 @@ describe('canonical spellings (2026-10-28 rename)', () => {
     expect(canonicalTag('kob')).toBe('Knee on belly')
     expect(canonicalTag('honey hole')).toBe('Saddle')
     expect(canonicalTag('retention')).toBe('Guard retention')
+    expect(canonicalTag('Osoto')).toBe('Osoto gari')
   })
 
   it('is idempotent over every name and alias', () => {
@@ -292,6 +293,8 @@ describe('placement: judgment calls, owner rulings and the live audit', () => {
   it('spot-checks the 2026-10 vocabulary harvest in its new homes', () => {
     expect(placeOfTag('Blast double')).toBe('wrestling')
     expect(placeOfTag('Osoto gari')).toBe('judo')
+    expect(placeOfTag('Osoto')).toBe('judo')
+    expect(groupOfTag('Osoto')).toBe('standing')
     expect(placeOfTag('Guard pull')).toBe('standing') // directly under the branch
     expect(placeOfTag('K-guard')).toBe('open-guard')
     expect(placeOfTag('Reverse De La Riva')).toBe('open-guard')

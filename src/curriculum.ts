@@ -133,7 +133,7 @@ export const TAG_DEFS: readonly TagDef[] = [
   t('Cow catcher', 'wrestling'),
   // Judo
   t('Judo', 'judo'),
-  t('Osoto gari', 'judo'),
+  t('Osoto gari', 'judo', ['osoto']),
   t('Seoi nage', 'judo'),
   t('Uchi mata', 'judo'),
   t('O goshi', 'judo'),

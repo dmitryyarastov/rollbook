@@ -37,7 +37,7 @@ On **2026-10-30** he refined the bottom branch, pinned by the "owner's 2026-10-3
 
 A tag's **place** (`CurriculumPlace`) is either a branch id or a sub-group id: a tag with a sub-group entry sits in it; a tag declared on a branch hangs **directly** from that branch (Takedowns, Guard pull, Passing, the generic guard attacks, the generic Escapes and the pin and back escapes, every Leg locks tag). Where his live tags sit (2026-10-30):
 
-- Standing & takedowns › **Wrestling**: Single leg takedown, Arm drag, Slide by, Cow catcher · **Judo**: Tomoe nage, Yoko tomoe nage
+- Standing & takedowns › **Wrestling**: Single leg takedown, Arm drag, Slide by, Cow catcher · **Judo**: Osoto gari (alias `osoto`), Tomoe nage, Yoko tomoe nage
 - Guard (direct): Guard retention, Sweeps, Lumberjack sweep, Kimura, Armbar, Triangle · **Closed guard**: Closed guard, Top lock, Side scissors, 2-on-1 from closed guard, Pendulum sweep · **Open guard**: De La Riva, DLR X, Single leg X, Spider guard · **Half guard**: Half guard, Half butterfly
 - Guard passing (direct): Passing · **Pressure passing**: Over-under pass, Double under pass, Smash pass · **Dynamic passing**: Knee cut, Long step pass · **Opening closed guard**: Opening closed guard
 - Top control › **Side control**: Side control · **Mount & knee on belly**: Mount attacks, Mount, Gift wrap · **Back & turtle**: Back takes, Darce
